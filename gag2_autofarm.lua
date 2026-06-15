@@ -1,4 +1,4 @@
--- GaG 2 Perfected Auto Farm Script v10 (Custom UI - No Loadstring)
+-- GaG 2 Perfected Auto Farm Script v11 (Neat Custom UI + Toggle Filters)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
@@ -14,10 +14,19 @@ getgenv().AutoBuyBamboo = false
 getgenv().AutoPlant = false
 getgenv().AutoHarvest = false
 
-getgenv().CropFilter = "All"
-getgenv().MutationFilter = "All"
-getgenv().SafeHomeCFrame = nil
+getgenv().StealAllCrops = true
+getgenv().SelectedCrops = {
+    Bamboo = false, Blueberry = false, Corn = false, Mushroom = false,
+    Apple = false, Carrot = false, Pumpkin = false, Tomato = false, Watermelon = false
+}
 
+getgenv().StealAllMutations = true
+getgenv().SelectedMutations = {
+    Bloodlit = false, Electric = false, Frozen = false, Rainbow = false,
+    Starstruck = false, Gold = false, Chained = false
+}
+
+getgenv().SafeHomeCFrame = nil
 getgenv().WalkSpeedToggle = false
 getgenv().WalkSpeedValue = 16
 getgenv().JumpPowerToggle = false
@@ -34,34 +43,50 @@ ScreenGui.Name = "KyrielGaG2Hub"
 ScreenGui.Parent = CoreGui
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 300, 0, 400)
-MainFrame.Position = UDim2.new(0.5, -150, 0.5, -200)
-MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.Size = UDim2.new(0, 320, 0, 450)
+MainFrame.Position = UDim2.new(0.5, -160, 0.5, -225)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
+local UICornerMain = Instance.new("UICorner")
+UICornerMain.CornerRadius = UDim.new(0, 8)
+UICornerMain.Parent = MainFrame
+
 local TopBar = Instance.new("Frame")
-TopBar.Size = UDim2.new(1, 0, 0, 30)
-TopBar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+TopBar.Size = UDim2.new(1, 0, 0, 35)
+TopBar.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 TopBar.BorderSizePixel = 0
 TopBar.Parent = MainFrame
 
+local UICornerTop = Instance.new("UICorner")
+UICornerTop.CornerRadius = UDim.new(0, 8)
+UICornerTop.Parent = TopBar
+
+local TopBarCover = Instance.new("Frame")
+TopBarCover.Size = UDim2.new(1, 0, 0, 8)
+TopBarCover.Position = UDim2.new(0, 0, 1, -8)
+TopBarCover.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+TopBarCover.BorderSizePixel = 0
+TopBarCover.Parent = TopBar
+
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -40, 1, 0)
+Title.Size = UDim2.new(1, -50, 1, 0)
+Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Text = " Kyriel Hub | GaG 2"
+Title.Text = "Kyriel Hub | GaG 2"
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = TopBar
 
 local MinBtn = Instance.new("TextButton")
-MinBtn.Size = UDim2.new(0, 40, 1, 0)
-MinBtn.Position = UDim2.new(1, -40, 0, 0)
-MinBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+MinBtn.Size = UDim2.new(0, 30, 0, 30)
+MinBtn.Position = UDim2.new(1, -35, 0, 2)
+MinBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
 MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 MinBtn.Text = "-"
 MinBtn.Font = Enum.Font.GothamBold
@@ -69,126 +94,111 @@ MinBtn.TextSize = 18
 MinBtn.BorderSizePixel = 0
 MinBtn.Parent = TopBar
 
+local UICornerMin = Instance.new("UICorner")
+UICornerMin.CornerRadius = UDim.new(0, 6)
+UICornerMin.Parent = MinBtn
+
 local ScrollFrame = Instance.new("ScrollingFrame")
-ScrollFrame.Size = UDim2.new(1, 0, 1, -30)
-ScrollFrame.Position = UDim2.new(0, 0, 0, 30)
+ScrollFrame.Size = UDim2.new(1, 0, 1, -45)
+ScrollFrame.Position = UDim2.new(0, 0, 0, 40)
 ScrollFrame.BackgroundTransparency = 1
 ScrollFrame.ScrollBarThickness = 4
+ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
 ScrollFrame.Parent = MainFrame
 
 local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = ScrollFrame
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding = UDim.new(0, 5)
+UIListLayout.Padding = UDim.new(0, 6)
+UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 local minimized = false
 MinBtn.MouseButton1Click:Connect(function()
     minimized = not minimized
     ScrollFrame.Visible = not minimized
     if minimized then
-        MainFrame.Size = UDim2.new(0, 300, 0, 30)
+        MainFrame.Size = UDim2.new(0, 320, 0, 35)
         MinBtn.Text = "+"
-        MinBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        MinBtn.BackgroundColor3 = Color3.fromRGB(80, 255, 80)
     else
-        MainFrame.Size = UDim2.new(0, 300, 0, 400)
+        MainFrame.Size = UDim2.new(0, 320, 0, 450)
         MinBtn.Text = "-"
-        MinBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        MinBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
     end
 end)
 
+local function CreateSection(text)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(0.95, 0, 0, 25)
+    lbl.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    lbl.TextColor3 = Color3.fromRGB(100, 200, 255)
+    lbl.Text = "  " .. text
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextSize = 13
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = ScrollFrame
+    
+    local uic = Instance.new("UICorner")
+    uic.CornerRadius = UDim.new(0, 4)
+    uic.Parent = lbl
+end
+
 local function CreateToggle(name, default, callback)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -10, 0, 30)
-    btn.Position = UDim2.new(0, 5, 0, 0)
-    btn.BackgroundColor3 = default and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(60, 60, 60)
+    btn.Size = UDim2.new(0.95, 0, 0, 30)
+    btn.BackgroundColor3 = default and Color3.fromRGB(60, 200, 100) or Color3.fromRGB(50, 50, 55)
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Text = name .. (default and " [ON]" or " [OFF]")
+    btn.Text = "  " .. name .. (default and " [ON]" or " [OFF]")
     btn.Font = Enum.Font.Gotham
     btn.TextSize = 13
+    btn.TextXAlignment = Enum.TextXAlignment.Left
     btn.Parent = ScrollFrame
+    
+    local uic = Instance.new("UICorner")
+    uic.CornerRadius = UDim.new(0, 4)
+    uic.Parent = btn
     
     local state = default
     btn.MouseButton1Click:Connect(function()
         state = not state
-        btn.BackgroundColor3 = state and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(60, 60, 60)
-        btn.Text = name .. (state and " [ON]" or " [OFF]")
+        btn.BackgroundColor3 = state and Color3.fromRGB(60, 200, 100) or Color3.fromRGB(50, 50, 55)
+        btn.Text = "  " .. name .. (state and " [ON]" or " [OFF]")
         callback(state)
     end)
-end
-
-local function CreateInput(name, default, callback)
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -10, 0, 50)
-    frame.Position = UDim2.new(0, 5, 0, 0)
-    frame.BackgroundTransparency = 1
-    frame.Parent = ScrollFrame
-    
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 0, 20)
-    label.BackgroundTransparency = 1
-    label.TextColor3 = Color3.fromRGB(200, 200, 200)
-    label.Text = name
-    label.Font = Enum.Font.Gotham
-    label.TextSize = 12
-    label.Parent = frame
-    
-    local box = Instance.new("TextBox")
-    box.Size = UDim2.new(1, 0, 0, 30)
-    box.Position = UDim2.new(0, 0, 0, 20)
-    box.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    box.TextColor3 = Color3.fromRGB(255, 255, 255)
-    box.Text = default
-    box.Font = Enum.Font.Gotham
-    box.TextSize = 13
-    box.Parent = frame
-    
-    box.FocusLost:Connect(function()
-        callback(box.Text)
-    end)
+    return btn
 end
 
 local function CreateButton(name, callback)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -10, 0, 30)
-    btn.Position = UDim2.new(0, 5, 0, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
+    btn.Size = UDim2.new(0.95, 0, 0, 30)
+    btn.BackgroundColor3 = Color3.fromRGB(70, 130, 255)
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.Text = name
     btn.Font = Enum.Font.GothamBold
     btn.TextSize = 13
     btn.Parent = ScrollFrame
+    
+    local uic = Instance.new("UICorner")
+    uic.CornerRadius = UDim.new(0, 4)
+    uic.Parent = btn
+    
     btn.MouseButton1Click:Connect(callback)
 end
 
-local function CreateLabel(text)
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, 0, 0, 20)
-    lbl.BackgroundTransparency = 1
-    lbl.TextColor3 = Color3.fromRGB(255, 215, 0)
-    lbl.Text = text
-    lbl.Font = Enum.Font.GothamBold
-    lbl.TextSize = 13
-    lbl.Parent = ScrollFrame
-end
-
 -- Populating UI
-CreateLabel(" --- AUTO DROPS ---")
+CreateSection("AUTO DROPS")
 CreateToggle("Auto Rainbow Seed", false, function(v) getgenv().AutoCollectRainbow = v end)
 CreateToggle("Auto Gold Seed", false, function(v) getgenv().AutoCollectGold = v end)
 CreateToggle("Auto All Drops", false, function(v) getgenv().AutoCollectAll = v end)
 
-CreateLabel(" --- AUTO STEAL ---")
-CreateToggle("Steal Night (Safe Mode)", false, function(v) getgenv().StealNight = v end)
-CreateInput("Crop Filter (ex: Bamboo, Corn, All)", "All", function(v) getgenv().CropFilter = v end)
-CreateInput("Mut Filter (ex: Rainbow, Gold, All)", "All", function(v) getgenv().MutationFilter = v end)
-
-CreateLabel(" --- AUTO FARMING ---")
+CreateSection("AUTO FARMING & STEAL")
 CreateToggle("Auto Sell (Every 30s)", false, function(v) getgenv().AutoSell = v end)
 CreateToggle("Auto Buy Bamboo Seed", false, function(v) getgenv().AutoBuyBamboo = v end)
 CreateToggle("Auto Plant (Need Home)", false, function(v) getgenv().AutoPlant = v end)
 CreateToggle("Auto Harvest Own (Need Home)", false, function(v) getgenv().AutoHarvest = v end)
+CreateToggle("Steal Night (Safe Mode)", false, function(v) getgenv().StealNight = v end)
 
-CreateLabel(" --- HOME / GARDEN ---")
+CreateSection("HOME SETTINGS")
 CreateButton("Set Safe Return/Garden Home", function()
     local Char = LocalPlayer.Character
     if Char and Char:FindFirstChild("HumanoidRootPart") then
@@ -196,9 +206,17 @@ CreateButton("Set Safe Return/Garden Home", function()
     end
 end)
 
-CreateLabel(" --- PLAYER ---")
-CreateToggle("WalkSpeed Modifier", false, function(v) getgenv().WalkSpeedToggle = v end)
-CreateInput("WalkSpeed Value", "16", function(v) getgenv().WalkSpeedValue = tonumber(v) or 16 end)
+CreateSection("CROP FILTER (For Steal)")
+CreateToggle("All Crops", true, function(v) getgenv().StealAllCrops = v end)
+for cropName, _ in pairs(getgenv().SelectedCrops) do
+    CreateToggle(cropName, false, function(v) getgenv().SelectedCrops[cropName] = v end)
+end
+
+CreateSection("MUTATION FILTER (For Steal)")
+CreateToggle("All Mutations", true, function(v) getgenv().StealAllMutations = v end)
+for mutName, _ in pairs(getgenv().SelectedMutations) do
+    CreateToggle(mutName, false, function(v) getgenv().SelectedMutations[mutName] = v end)
+end
 
 -- Update Canvas Size
 task.delay(0.5, function()
@@ -279,7 +297,6 @@ task.spawn(function()
             sellTimer = sellTimer + 0.5
             if sellTimer >= 30 then
                 sellTimer = 0
-                -- Look for sell part
                 for _, part in ipairs(Workspace:GetDescendants()) do
                     if part:IsA("BasePart") and (string.find(string.lower(part.Name), "sell") or (part:FindFirstChild("TouchInterest") and string.find(string.lower(part.Parent.Name), "sell"))) then
                         teleportTo(part.CFrame)
@@ -382,23 +399,22 @@ task.spawn(function()
                         local parentName = item.Parent and item.Parent.Name or ""
                         local itemName = string.lower(parentName .. " " .. item.Name)
                         
-                        local cropFilter = string.lower(getgenv().CropFilter)
-                        local mutFilter = string.lower(getgenv().MutationFilter)
-                        
-                        local validCrop = (cropFilter == "all" or cropFilter == "")
+                        -- Check Crop Filter
+                        local validCrop = getgenv().StealAllCrops
                         if not validCrop then
-                            for word in string.gmatch(cropFilter, '([^,]+)') do
-                                if string.find(itemName, string.match(word, "^%s*(.-)%s*$")) then
+                            for cropName, isSelected in pairs(getgenv().SelectedCrops) do
+                                if isSelected and string.find(itemName, string.lower(cropName)) then
                                     validCrop = true
                                     break
                                 end
                             end
                         end
                         
-                        local validMut = (mutFilter == "all" or mutFilter == "")
+                        -- Check Mutation Filter
+                        local validMut = getgenv().StealAllMutations
                         if not validMut then
-                            for word in string.gmatch(mutFilter, '([^,]+)') do
-                                if string.find(itemName, string.match(word, "^%s*(.-)%s*$")) then
+                            for mutName, isSelected in pairs(getgenv().SelectedMutations) do
+                                if isSelected and string.find(itemName, string.lower(mutName)) then
                                     validMut = true
                                     break
                                 end
@@ -436,18 +452,6 @@ task.spawn(function()
                 if dist > 15 then
                     teleportTo(getgenv().SafeHomeCFrame)
                 end
-            end
-        end
-    end
-end)
-
--- WalkSpeed loop
-task.spawn(function()
-    while task.wait(0.1) do
-        local Char = LocalPlayer.Character
-        if Char and Char:FindFirstChild("Humanoid") then
-            if getgenv().WalkSpeedToggle then
-                Char.Humanoid.WalkSpeed = getgenv().WalkSpeedValue
             end
         end
     end
