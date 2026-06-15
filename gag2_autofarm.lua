@@ -1,4 +1,4 @@
--- GaG 2 Perfected Auto Farm Script v11 (Neat Custom UI + Toggle Filters)
+-- GaG 2 Perfected Auto Farm Script v12 (Cyclic Selectors & Fixed Buy)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
@@ -9,10 +9,15 @@ getgenv().AutoCollectRainbow = false
 getgenv().AutoCollectGold = false
 getgenv().AutoCollectAll = false
 getgenv().StealNight = false
+
 getgenv().AutoSell = false
-getgenv().AutoBuyBamboo = false
+getgenv().AutoBuy = false
 getgenv().AutoPlant = false
 getgenv().AutoHarvest = false
+
+getgenv().TargetBuy = "None"
+getgenv().TargetPlant = "None"
+getgenv().TargetSell = "All"
 
 getgenv().StealAllCrops = true
 getgenv().SelectedCrops = {
@@ -43,8 +48,8 @@ ScreenGui.Name = "KyrielGaG2Hub"
 ScreenGui.Parent = CoreGui
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 320, 0, 450)
-MainFrame.Position = UDim2.new(0.5, -160, 0.5, -225)
+MainFrame.Size = UDim2.new(0, 320, 0, 480)
+MainFrame.Position = UDim2.new(0.5, -160, 0.5, -240)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -121,7 +126,7 @@ MinBtn.MouseButton1Click:Connect(function()
         MinBtn.Text = "+"
         MinBtn.BackgroundColor3 = Color3.fromRGB(80, 255, 80)
     else
-        MainFrame.Size = UDim2.new(0, 320, 0, 450)
+        MainFrame.Size = UDim2.new(0, 320, 0, 480)
         MinBtn.Text = "-"
         MinBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
     end
@@ -168,6 +173,30 @@ local function CreateToggle(name, default, callback)
     return btn
 end
 
+local function CreateCyclicButton(name, options, defaultIndex, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.95, 0, 0, 30)
+    btn.BackgroundColor3 = Color3.fromRGB(150, 80, 200)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Text = "  " .. name .. ": " .. options[defaultIndex]
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 13
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.Parent = ScrollFrame
+    
+    local uic = Instance.new("UICorner")
+    uic.CornerRadius = UDim.new(0, 4)
+    uic.Parent = btn
+    
+    local index = defaultIndex
+    btn.MouseButton1Click:Connect(function()
+        index = index + 1
+        if index > #options then index = 1 end
+        btn.Text = "  " .. name .. ": " .. options[index]
+        callback(options[index])
+    end)
+end
+
 local function CreateButton(name, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0.95, 0, 0, 30)
@@ -185,17 +214,24 @@ local function CreateButton(name, callback)
     btn.MouseButton1Click:Connect(callback)
 end
 
+local cropOptions = {"None", "Bamboo", "Blueberry", "Corn", "Mushroom", "Apple", "Carrot", "Pumpkin", "Tomato", "Watermelon"}
+
 -- Populating UI
 CreateSection("AUTO DROPS")
 CreateToggle("Auto Rainbow Seed", false, function(v) getgenv().AutoCollectRainbow = v end)
 CreateToggle("Auto Gold Seed", false, function(v) getgenv().AutoCollectGold = v end)
 CreateToggle("Auto All Drops", false, function(v) getgenv().AutoCollectAll = v end)
 
+CreateSection("AUTO FARMING TARGETS")
+CreateCyclicButton("Target Buy", cropOptions, 1, function(v) getgenv().TargetBuy = v end)
+CreateCyclicButton("Target Plant", cropOptions, 1, function(v) getgenv().TargetPlant = v end)
+CreateCyclicButton("Target Sell", {"All", "Bamboo", "Blueberry", "Corn"}, 1, function(v) getgenv().TargetSell = v end)
+
 CreateSection("AUTO FARMING & STEAL")
-CreateToggle("Auto Sell (Every 30s)", false, function(v) getgenv().AutoSell = v end)
-CreateToggle("Auto Buy Bamboo Seed", false, function(v) getgenv().AutoBuyBamboo = v end)
-CreateToggle("Auto Plant (Need Home)", false, function(v) getgenv().AutoPlant = v end)
+CreateToggle("Auto Buy Seed (Target Buy)", false, function(v) getgenv().AutoBuy = v end)
+CreateToggle("Auto Plant (Target Plant & Home)", false, function(v) getgenv().AutoPlant = v end)
 CreateToggle("Auto Harvest Own (Need Home)", false, function(v) getgenv().AutoHarvest = v end)
+CreateToggle("Auto Sell (Every 30s)", false, function(v) getgenv().AutoSell = v end)
 CreateToggle("Steal Night (Safe Mode)", false, function(v) getgenv().StealNight = v end)
 
 CreateSection("HOME SETTINGS")
@@ -299,6 +335,7 @@ task.spawn(function()
                 sellTimer = 0
                 for _, part in ipairs(Workspace:GetDescendants()) do
                     if part:IsA("BasePart") and (string.find(string.lower(part.Name), "sell") or (part:FindFirstChild("TouchInterest") and string.find(string.lower(part.Parent.Name), "sell"))) then
+                        -- GaG 2 normally has a single sell pad that sells everything, so TargetSell filter isn't deeply implemented on part level unless it's a specific seller NPC.
                         teleportTo(part.CFrame)
                         task.wait(1)
                         break
@@ -307,24 +344,46 @@ task.spawn(function()
             end
         end
 
-        -- Auto Buy Bamboo
-        if not acted and getgenv().AutoBuyBamboo then
+        -- Auto Buy Target
+        if not acted and getgenv().AutoBuy and getgenv().TargetBuy ~= "None" then
             for _, item in ipairs(Workspace:GetDescendants()) do
-                if string.find(string.lower(item.Name), "bamboo") and string.find(string.lower(item.Name), "seed") then
-                    local prompt = item:FindFirstChildWhichIsA("ProximityPrompt")
-                    if prompt and string.find(string.lower(prompt.ActionText), "buy") then
-                        teleportTo(item:IsA("Model") and item.PrimaryPart.CFrame or item.CFrame)
-                        fireproximityprompt(prompt)
+                if item:IsA("ProximityPrompt") then
+                    local parentName = string.lower(item.Parent.Name)
+                    local targetName = string.lower(getgenv().TargetBuy)
+                    if string.find(parentName, targetName) and string.find(parentName, "seed") then
+                        -- It's the dispenser for our target seed!
+                        local tPart = getTargetPart(item.Parent) or item.Parent
+                        teleportTo(tPart.CFrame)
+                        fireproximityprompt(item)
                         acted = true
+                        task.wait(0.5)
                         break
                     end
                 end
             end
         end
 
-        -- Auto Plant
-        if not acted and getgenv().AutoPlant and getgenv().SafeHomeCFrame then
-            local seed = LocalPlayer.Backpack:FindFirstChild("Bamboo Seed") or LocalPlayer.Character:FindFirstChild("Bamboo Seed")
+        -- Auto Plant Target
+        if not acted and getgenv().AutoPlant and getgenv().SafeHomeCFrame and getgenv().TargetPlant ~= "None" then
+            local targetName = string.lower(getgenv().TargetPlant)
+            local seed = nil
+            -- Check backpack
+            for _, tool in ipairs(LocalPlayer.Backpack:GetChildren()) do
+                if string.find(string.lower(tool.Name), targetName) and string.find(string.lower(tool.Name), "seed") then
+                    seed = tool
+                    break
+                end
+            end
+            -- Check character
+            if not seed and LocalPlayer.Character then
+                for _, tool in ipairs(LocalPlayer.Character:GetChildren()) do
+                    if string.find(string.lower(tool.Name), targetName) and string.find(string.lower(tool.Name), "seed") then
+                        seed = tool
+                        break
+                    end
+                end
+            end
+            
             if seed then
                 teleportTo(getgenv().SafeHomeCFrame)
                 if seed.Parent == LocalPlayer.Backpack then
