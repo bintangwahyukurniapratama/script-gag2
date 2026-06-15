@@ -257,43 +257,74 @@ end
 task.spawn(function()
     while true do
         task.wait(0.4)
-        local ok, err = pcall(function()
+        pcall(function()
 
-            -- ---- AUTO PICKUP ----
+            -- ---- AUTO PICKUP (Rainbow Seed & Gold Seed dari event) ----
             if cfg.AutoPickup then
-                -- Scan seluruh workspace untuk Tool atau item yang bisa dipickup
+                -- Scan semua descendants workspace
+                -- Event seed biasanya berbentuk Tool atau Model di dalam workspace langsung
+                -- atau di folder seperti "Drops", "EventDrops", dsb.
                 for _, obj in ipairs(Workspace:GetDescendants()) do
                     if IsIgnored(obj) then continue end
-                    -- Tool yang jatuh ke workspace (dropped item)
+
+                    local targetPart = nil
+                    local targetRoot = nil
+
+                    -- Kalau dia Tool (dropped)
                     if obj:IsA("Tool") then
-                        local handle = obj:FindFirstChild("Handle")
-                        if handle then
-                            TP(handle.CFrame)
-                            DoInteract(handle)
-                            SetIgnore(obj, 4)
+                        local n = string.lower(obj.Name)
+                        -- Spesifik Rainbow Seed dan Gold Seed
+                        local isRainbow = string.find(n, "rainbow") and string.find(n, "seed")
+                        local isGold    = string.find(n, "gold")    and string.find(n, "seed")
+                        if isRainbow or isGold then
+                            targetPart = obj:FindFirstChild("Handle")
+                            targetRoot = obj
                         end
                     end
-                    -- BasePart dengan nama mengandung "seed" atau "drop"
-                    if obj:IsA("BasePart") then
+
+                    -- Kalau dia BasePart dengan nama seed
+                    if obj:IsA("BasePart") and not targetPart then
                         local n = string.lower(obj.Name)
-                        if string.find(n, "seed") or string.find(n, "drop") or string.find(n, "reward") then
-                            TP(obj.CFrame)
-                            DoInteract(obj)
-                            SetIgnore(obj, 4)
+                        local isRainbow = string.find(n, "rainbow") and string.find(n, "seed")
+                        local isGold    = string.find(n, "gold")    and string.find(n, "seed")
+                        if isRainbow or isGold then
+                            targetPart = obj
+                            targetRoot = obj
                         end
+                    end
+
+                    -- Kalau dia Model yang namanya Rainbow/Gold Seed
+                    if obj:IsA("Model") and not targetPart then
+                        local n = string.lower(obj.Name)
+                        local isRainbow = string.find(n, "rainbow") and string.find(n, "seed")
+                        local isGold    = string.find(n, "gold")    and string.find(n, "seed")
+                        if isRainbow or isGold then
+                            targetPart = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+                            targetRoot = obj
+                        end
+                    end
+
+                    if targetPart and targetRoot then
+                        TP(targetPart.CFrame)
+                        task.wait(0.1)
+                        DoInteract(targetPart)
+                        SetIgnore(targetRoot, 5)
                     end
                 end
             end
 
             -- ---- STEAL NIGHT ----
-            if cfg.StealNight then
-                -- Scan semua ProximityPrompt di workspace
+            -- Hanya jalan saat malam: ClockTime < 6 (subuh) atau > 18 (sore ke malam)
+            local clockTime = Lighting.ClockTime
+            local isNight = clockTime < 6 or clockTime > 18
+
+            if cfg.StealNight and isNight then
                 for _, pp in ipairs(Workspace:GetDescendants()) do
                     if not pp:IsA("ProximityPrompt") then continue end
                     if not pp.Enabled then continue end
 
                     local actionLow = string.lower(pp.ActionText)
-                    -- GaG2 pakai "Harvest" dan beberapa pake "Steal"
+                    -- GaG2 prompt untuk crop orang lain: "Steal" atau "Harvest"
                     local isStealAction = string.find(actionLow, "steal") or string.find(actionLow, "harvest")
                     if not isStealAction then continue end
 
@@ -301,26 +332,22 @@ task.spawn(function()
                     if not part or not part:IsA("BasePart") then continue end
                     if IsIgnored(part) then continue end
 
-                    -- Cek nama item/parent untuk filter crop
+                    -- Filter crop
                     local fullName = part.Name .. " " .. (part.Parent and part.Parent.Name or "")
                     if not CropAllowed(fullName) then continue end
 
-                    -- Jangan steal kalau owner dekat
+                    -- Skip kalau ada owner di sekitar (radius 60 stud)
                     if OwnerNearby(part.Position) then continue end
 
-                    -- Teleport dan steal
+                    -- TP dan steal
                     TP(part.CFrame)
                     task.wait(0.15)
                     fireproximityprompt(pp)
-                    SetIgnore(part, 5)
+                    SetIgnore(part, 6)
                     task.wait(0.2)
                 end
             end
 
         end)
-
-        if not ok then
-            -- silent fail, jalan terus
-        end
     end
 end)
