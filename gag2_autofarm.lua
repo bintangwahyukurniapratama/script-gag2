@@ -1,4 +1,4 @@
--- GaG 2 Universal UI Auto Farm Script
+-- GaG 2 Universal UI Auto Farm Script v5
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
@@ -6,7 +6,12 @@ local LocalPlayer = Players.LocalPlayer
 
 getgenv().AutoCollectRainbow = false
 getgenv().AutoCollectGold = false
+getgenv().AutoCollectAll = false
 getgenv().StealNight = false
+
+-- Save original home position so we can escape
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local SafeHomeCFrame = Character:WaitForChild("HumanoidRootPart").CFrame
 
 -- Remove old UI
 if CoreGui:FindFirstChild("KyrielGaG2Hub") then
@@ -19,8 +24,8 @@ ScreenGui.Name = "KyrielGaG2Hub"
 ScreenGui.Parent = CoreGui
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 200, 0, 250)
-MainFrame.Position = UDim2.new(0.5, -100, 0.5, -125)
+MainFrame.Size = UDim2.new(0, 200, 0, 290)
+MainFrame.Position = UDim2.new(0.5, -100, 0.5, -145)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.Active = true
 MainFrame.Draggable = true
@@ -64,7 +69,7 @@ MinBtn.MouseButton1Click:Connect(function()
         MainFrame.Size = UDim2.new(0, 200, 0, 30)
         MinBtn.Text = "+"
     else
-        MainFrame.Size = UDim2.new(0, 200, 0, 250)
+        MainFrame.Size = UDim2.new(0, 200, 0, 290)
         MinBtn.Text = "-"
     end
 end)
@@ -94,11 +99,30 @@ end
 
 createToggle("Auto Rainbow Seed", 10, function(val) getgenv().AutoCollectRainbow = val end)
 createToggle("Auto Gold Seed", 50, function(val) getgenv().AutoCollectGold = val end)
-createToggle("Steal Fruit (Night)", 90, function(val) getgenv().StealNight = val end)
+createToggle("Auto All Drops", 90, function(val) getgenv().AutoCollectAll = val end)
+createToggle("Steal Fruit (Night)", 130, function(val) getgenv().StealNight = val end)
+
+local SetHomeBtn = Instance.new("TextButton")
+SetHomeBtn.Size = UDim2.new(1, -20, 0, 30)
+SetHomeBtn.Position = UDim2.new(0, 10, 0, 170)
+SetHomeBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
+SetHomeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SetHomeBtn.Text = "Set Safe Home Here"
+SetHomeBtn.Parent = ContentFrame
+
+SetHomeBtn.MouseButton1Click:Connect(function()
+    local Char = LocalPlayer.Character
+    if Char and Char:FindFirstChild("HumanoidRootPart") then
+        SafeHomeCFrame = Char.HumanoidRootPart.CFrame
+        SetHomeBtn.Text = "Home Saved!"
+        task.wait(1)
+        SetHomeBtn.Text = "Set Safe Home Here"
+    end
+end)
 
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(1, -20, 0, 30)
-CloseBtn.Position = UDim2.new(0, 10, 0, 180)
+CloseBtn.Position = UDim2.new(0, 10, 0, 210)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CloseBtn.Text = "Close Menu"
@@ -110,92 +134,113 @@ end)
 
 -- Universal Farming Logic
 local function teleportTo(part)
-    local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    if Character and Character:FindFirstChild("HumanoidRootPart") and part then
-        Character.HumanoidRootPart.CFrame = part.CFrame
-        task.wait(0.15)
-    end
+    pcall(function()
+        local Char = LocalPlayer.Character
+        if Char and Char:FindFirstChild("HumanoidRootPart") and part then
+            Char.HumanoidRootPart.CFrame = part.CFrame
+            task.wait(0.15)
+        end
+    end)
+end
+
+local function teleportHome()
+    pcall(function()
+        local Char = LocalPlayer.Character
+        if Char and Char:FindFirstChild("HumanoidRootPart") then
+            Char.HumanoidRootPart.CFrame = SafeHomeCFrame
+            task.wait(0.2)
+        end
+    end)
 end
 
 local function interactWith(part)
-    -- Try touch
-    local Character = LocalPlayer.Character
-    if Character and Character:FindFirstChild("HumanoidRootPart") then
-        firetouchinterest(Character.HumanoidRootPart, part, 0)
-        firetouchinterest(Character.HumanoidRootPart, part, 1)
-    end
-    -- Try ProximityPrompt
-    local prompt = part:FindFirstChildWhichIsA("ProximityPrompt")
-    if prompt then
-        fireproximityprompt(prompt)
-    end
-    -- Try ClickDetector
-    local click = part:FindFirstChildWhichIsA("ClickDetector")
-    if click then
-        fireclickdetector(click)
-    end
+    pcall(function()
+        local Char = LocalPlayer.Character
+        if Char and Char:FindFirstChild("HumanoidRootPart") then
+            firetouchinterest(Char.HumanoidRootPart, part, 0)
+            firetouchinterest(Char.HumanoidRootPart, part, 1)
+        end
+        local prompt = part:FindFirstChildWhichIsA("ProximityPrompt")
+        if prompt then fireproximityprompt(prompt) end
+        local click = part:FindFirstChildWhichIsA("ClickDetector")
+        if click then fireclickdetector(click) end
+    end)
 end
 
+-- Drops Collector Loop
 task.spawn(function()
-    while task.wait(0.5) do
-        if getgenv().AutoCollectRainbow or getgenv().AutoCollectGold then
-            -- Scan entire workspace to be safe instead of just a Drops folder
-            for _, item in ipairs(Workspace:GetDescendants()) do
-                if item:IsA("BasePart") or item:IsA("Model") then
-                    local itemName = string.lower(item.Name)
-                    local isRainbow = string.find(itemName, "rainbow")
-                    local isGold = string.find(itemName, "gold")
-                    local isSeed = string.find(itemName, "seed") or string.find(itemName, "drop")
-                    
-                    local targetPart = item:IsA("Model") and item.PrimaryPart or item
-                    
-                    if getgenv().AutoCollectRainbow and isRainbow and targetPart then
-                        teleportTo(targetPart)
-                        interactWith(targetPart)
-                    end
-                    
-                    if getgenv().AutoCollectGold and isGold and targetPart then
-                        teleportTo(targetPart)
-                        interactWith(targetPart)
+    while task.wait(0.2) do
+        if getgenv().AutoCollectRainbow or getgenv().AutoCollectGold or getgenv().AutoCollectAll then
+            pcall(function()
+                for _, item in ipairs(Workspace:GetDescendants()) do
+                    if item:IsA("BasePart") or item:IsA("Model") then
+                        local itemName = string.lower(item.Name)
+                        local isRainbow = string.find(itemName, "rainbow")
+                        local isGold = string.find(itemName, "gold")
+                        local isDrop = string.find(itemName, "drop") or string.find(itemName, "seed") or item.Parent.Name == "Drops"
+                        
+                        local targetPart = item:IsA("Model") and item.PrimaryPart or item
+                        if targetPart then
+                            if getgenv().AutoCollectAll and isDrop then
+                                teleportTo(targetPart)
+                                interactWith(targetPart)
+                            elseif getgenv().AutoCollectRainbow and isRainbow then
+                                teleportTo(targetPart)
+                                interactWith(targetPart)
+                            elseif getgenv().AutoCollectGold and isGold then
+                                teleportTo(targetPart)
+                                interactWith(targetPart)
+                            end
+                        end
                     end
                 end
-            end
+            end)
         end
     end
 end)
 
--- Steal Night (Steal Fruit at Night) Logic
+-- Steal Night Loop
 task.spawn(function()
     while task.wait(0.5) do
         if getgenv().StealNight then
-            -- Find all crops/fruits in workspace to steal
-            for _, item in ipairs(Workspace:GetDescendants()) do
-                if item:IsA("BasePart") or item:IsA("Model") then
-                    local itemName = string.lower(item.Name)
-                    -- Often crops have specific names or ProximityPrompts with action "Harvest" or "Steal"
-                    local prompt = item:FindFirstChildWhichIsA("ProximityPrompt")
-                    if prompt then
-                        local actionText = string.lower(prompt.ActionText)
-                        if string.find(actionText, "harvest") or string.find(actionText, "steal") or string.find(actionText, "pick") then
+            pcall(function()
+                local hasStolen = false
+                for _, item in ipairs(Workspace:GetDescendants()) do
+                    if item:IsA("BasePart") or item:IsA("Model") then
+                        local prompt = item:FindFirstChildWhichIsA("ProximityPrompt")
+                        if prompt then
+                            local actionText = string.lower(prompt.ActionText)
+                            if string.find(actionText, "harvest") or string.find(actionText, "steal") or string.find(actionText, "pick") then
+                                local targetPart = item:IsA("Model") and item.PrimaryPart or item
+                                if targetPart then
+                                    teleportTo(targetPart)
+                                    fireproximityprompt(prompt)
+                                    hasStolen = true
+                                    task.wait(0.1)
+                                end
+                            end
+                        end
+                        
+                        -- Fallback for touch-based stealing
+                        local itemName = string.lower(item.Name)
+                        if string.find(itemName, "fruit") or string.find(itemName, "crop") then
                             local targetPart = item:IsA("Model") and item.PrimaryPart or item
-                            if targetPart then
+                            if targetPart and targetPart:FindFirstChild("TouchInterest") then
                                 teleportTo(targetPart)
-                                fireproximityprompt(prompt)
-                                task.wait(0.2)
+                                interactWith(targetPart)
+                                hasStolen = true
+                                task.wait(0.1)
                             end
                         end
                     end
-                    
-                    -- Also just checking names for fruit if it relies on touch
-                    if string.find(itemName, "fruit") or string.find(itemName, "crop") then
-                        local targetPart = item:IsA("Model") and item.PrimaryPart or item
-                        if targetPart then
-                            teleportTo(targetPart)
-                            interactWith(targetPart)
-                        end
-                    end
                 end
-            end
+                
+                -- Escaping logic
+                if hasStolen then
+                    teleportHome()
+                    task.wait(1) -- Wait a bit so we don't look suspicious teleporting back immediately to steal again
+                end
+            end)
         end
     end
 end)
