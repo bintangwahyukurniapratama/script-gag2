@@ -1,239 +1,276 @@
--- Kyriel Hub | GaG2 | Steal Night + Auto Pickup ONLY
--- Mobile friendly, draggable, compact
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local Lighting = game:GetService("Lighting")
-local CoreGui = game:GetService("CoreGui")
-local LocalPlayer = Players.LocalPlayer
+--[[
+    Kyriel Hub | Grow a Garden 2
+    Fitur: Steal Night + Auto Pickup (Rainbow/Gold Seed)
+    Mobile friendly | Draggable | Compact
+--]]
 
--- Cleanup
-if CoreGui:FindFirstChild("KyrielHub") then CoreGui.KyrielHub:Destroy() end
+local Players      = game:GetService("Players")
+local Workspace    = game:GetService("Workspace")
+local Lighting     = game:GetService("Lighting")
+local CoreGui      = game:GetService("CoreGui")
+local RunService   = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- State
-local cfg = {
+local LP           = Players.LocalPlayer
+
+-- ═══════════════════════════════════════════
+-- CLEANUP
+-- ═══════════════════════════════════════════
+if CoreGui:FindFirstChild("KyrielHub") then
+    CoreGui:FindFirstChild("KyrielHub"):Destroy()
+end
+
+-- ═══════════════════════════════════════════
+-- STATE
+-- ═══════════════════════════════════════════
+local Enabled = {
     StealNight = false,
-    AutoPickup  = false,
-    StealFilter = {
-        All        = true,
-        Bamboo     = false,
-        Blueberry  = false,
-        Corn       = false,
-        Mushroom   = false,
-        Apple      = false,
-        Carrot     = false,
-        Pumpkin    = false,
-        Tomato     = false,
-        Watermelon = false,
-        Wheat      = false,
-        Potato     = false,
-        Onion      = false,
-    }
+    AutoPickup = false,
 }
 
--- ============ UI ============
+local StealFilter = {
+    All        = true,   -- kalau true, curi semua crop
+    Bamboo     = false,
+    Blueberry  = false,
+    Corn       = false,
+    Mushroom   = false,
+    Apple      = false,
+    Carrot     = false,
+    Pumpkin    = false,
+    Tomato     = false,
+    Watermelon = false,
+    Wheat      = false,
+    Potato     = false,
+    Onion      = false,
+}
+
+local CROP_LIST = {
+    "Bamboo","Blueberry","Corn","Mushroom","Apple",
+    "Carrot","Pumpkin","Tomato","Watermelon","Wheat","Potato","Onion"
+}
+
+-- ═══════════════════════════════════════════
+-- UI
+-- ═══════════════════════════════════════════
 local SG = Instance.new("ScreenGui")
-SG.Name = "KyrielHub"
-SG.ResetOnSpawn = false
-SG.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-SG.Parent = CoreGui
+SG.Name             = "KyrielHub"
+SG.ResetOnSpawn     = false
+SG.ZIndexBehavior   = Enum.ZIndexBehavior.Sibling
+SG.DisplayOrder     = 999
+SG.Parent           = CoreGui
 
--- Main frame (kecil, di tengah atas)
+-- Main frame
 local Main = Instance.new("Frame")
-Main.Name = "Main"
-Main.Size = UDim2.new(0, 270, 0, 380)
-Main.Position = UDim2.new(0, 10, 0, 10)   -- pojok kiri atas, ga nembus
-Main.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
-Main.Active = true
-Main.Draggable = true
-Main.Parent = SG
+Main.Name            = "Main"
+Main.Size            = UDim2.new(0, 265, 0, 0)  -- height diisi auto
+Main.Position        = UDim2.new(0, 8, 0, 8)
+Main.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
+Main.Active          = true
+Main.Draggable       = true
+Main.Parent          = SG
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
-
--- Stroke
-local stroke = Instance.new("UIStroke", Main)
-stroke.Color = Color3.fromRGB(80, 80, 100)
-stroke.Thickness = 1
+local ms = Instance.new("UIStroke", Main)
+ms.Color     = Color3.fromRGB(70, 70, 95)
+ms.Thickness = 1.2
 
 -- Title bar
-local TitleBar = Instance.new("Frame", Main)
-TitleBar.Size = UDim2.new(1, 0, 0, 32)
-TitleBar.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 10)
--- cover agar corner bawah title ga kelihatan
-local cover = Instance.new("Frame", TitleBar)
-cover.Size = UDim2.new(1, 0, 0.5, 0)
-cover.Position = UDim2.new(0, 0, 0.5, 0)
-cover.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-cover.BorderSizePixel = 0
+local TBar = Instance.new("Frame", Main)
+TBar.Size             = UDim2.new(1, 0, 0, 30)
+TBar.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+TBar.ZIndex           = 2
+Instance.new("UICorner", TBar).CornerRadius = UDim.new(0, 10)
+local tbc = Instance.new("Frame", TBar)  -- fix bottom corner
+tbc.Size              = UDim2.new(1, 0, 0.5, 0)
+tbc.Position          = UDim2.new(0, 0, 0.5, 0)
+tbc.BackgroundColor3  = Color3.fromRGB(12, 12, 18)
+tbc.BorderSizePixel   = 0
 
-local TitleLbl = Instance.new("TextLabel", TitleBar)
-TitleLbl.Size = UDim2.new(1, -40, 1, 0)
-TitleLbl.Position = UDim2.new(0, 10, 0, 0)
-TitleLbl.BackgroundTransparency = 1
-TitleLbl.Text = "⚡ Kyriel | GaG 2"
-TitleLbl.Font = Enum.Font.GothamBold
-TitleLbl.TextSize = 13
-TitleLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-TitleLbl.TextXAlignment = Enum.TextXAlignment.Left
+local TLbl = Instance.new("TextLabel", TBar)
+TLbl.Size               = UDim2.new(1, -38, 1, 0)
+TLbl.Position           = UDim2.new(0, 10, 0, 0)
+TLbl.BackgroundTransparency = 1
+TLbl.Text               = "⚡ Kyriel Hub | GaG 2"
+TLbl.Font               = Enum.Font.GothamBold
+TLbl.TextSize           = 13
+TLbl.TextColor3         = Color3.fromRGB(220, 220, 255)
+TLbl.TextXAlignment     = Enum.TextXAlignment.Left
+TLbl.ZIndex             = 3
 
-local MinBtn = Instance.new("TextButton", TitleBar)
-MinBtn.Size = UDim2.new(0, 28, 0, 28)
-MinBtn.Position = UDim2.new(1, -32, 0, 2)
-MinBtn.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
-MinBtn.Text = "−"
-MinBtn.Font = Enum.Font.GothamBold
-MinBtn.TextSize = 16
-MinBtn.TextColor3 = Color3.fromRGB(255,255,255)
-MinBtn.BorderSizePixel = 0
+local MinBtn = Instance.new("TextButton", TBar)
+MinBtn.Size             = UDim2.new(0, 26, 0, 26)
+MinBtn.Position         = UDim2.new(1, -30, 0, 2)
+MinBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
+MinBtn.Text             = "−"
+MinBtn.Font             = Enum.Font.GothamBold
+MinBtn.TextSize         = 16
+MinBtn.TextColor3       = Color3.fromRGB(255, 255, 255)
+MinBtn.BorderSizePixel  = 0
+MinBtn.ZIndex           = 3
 Instance.new("UICorner", MinBtn).CornerRadius = UDim.new(0, 6)
 
--- Content scroll
-local Scroll = Instance.new("ScrollingFrame", Main)
-Scroll.Name = "Scroll"
-Scroll.Size = UDim2.new(1, 0, 1, -36)
-Scroll.Position = UDim2.new(0, 0, 0, 34)
-Scroll.BackgroundTransparency = 1
-Scroll.ScrollBarThickness = 3
-Scroll.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 100)
-Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+-- Scroll body
+local Body = Instance.new("ScrollingFrame", Main)
+Body.Name                  = "Body"
+Body.Size                  = UDim2.new(1, 0, 0, 0)
+Body.Position              = UDim2.new(0, 0, 0, 32)
+Body.BackgroundTransparency = 1
+Body.ScrollBarThickness    = 3
+Body.ScrollBarImageColor3  = Color3.fromRGB(80, 80, 110)
+Body.CanvasSize            = UDim2.new(0, 0, 0, 0)
 
-local List = Instance.new("UIListLayout", Scroll)
-List.SortOrder = Enum.SortOrder.LayoutOrder
-List.Padding = UDim.new(0, 5)
-List.HorizontalAlignment = Enum.HorizontalAlignment.Center
+local BList = Instance.new("UIListLayout", Body)
+BList.SortOrder            = Enum.SortOrder.LayoutOrder
+BList.Padding              = UDim.new(0, 4)
+BList.HorizontalAlignment  = Enum.HorizontalAlignment.Center
 
-local Padding = Instance.new("UIPadding", Scroll)
-Padding.PaddingTop = UDim.new(0, 6)
+local BPad = Instance.new("UIPadding", Body)
+BPad.PaddingTop    = UDim.new(0, 6)
+BPad.PaddingBottom = UDim.new(0, 8)
 
--- Auto resize scroll
-local function UpdateScroll()
-    Scroll.CanvasSize = UDim2.new(0, 0, 0, List.AbsoluteContentSize.Y + 14)
+-- Auto height update
+local MAX_H = 370  -- max frame tinggi
+local function UpdateHeight()
+    local contentH = BList.AbsoluteContentSize.Y + 16
+    local frameH   = math.min(contentH + 32, MAX_H)
+    local bodyH    = frameH - 32
+    Main.Size = UDim2.new(0, 265, 0, frameH)
+    Body.Size = UDim2.new(1, 0, 0, bodyH)
+    Body.CanvasSize = UDim2.new(0, 0, 0, contentH)
 end
-List:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(UpdateScroll)
+BList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(UpdateHeight)
 
 -- Minimize
 local minimized = false
 MinBtn.MouseButton1Click:Connect(function()
     minimized = not minimized
-    Scroll.Visible = not minimized
-    Main.Size = minimized and UDim2.new(0, 270, 0, 36) or UDim2.new(0, 270, 0, 380)
-    MinBtn.Text = minimized and "+" or "−"
-    MinBtn.BackgroundColor3 = minimized and Color3.fromRGB(60, 200, 80) or Color3.fromRGB(255, 70, 70)
+    Body.Visible          = not minimized
+    Main.Size             = minimized and UDim2.new(0, 265, 0, 32) or UDim2.new(0, 265, 0, math.min(BList.AbsoluteContentSize.Y + 48, MAX_H))
+    MinBtn.Text           = minimized and "+" or "−"
+    MinBtn.BackgroundColor3 = minimized and Color3.fromRGB(50, 180, 70) or Color3.fromRGB(220, 60, 60)
 end)
 
--- ===== UI Builders =====
-local function MakeSection(label)
-    local f = Instance.new("Frame", Scroll)
-    f.Size = UDim2.new(0.94, 0, 0, 20)
-    f.BackgroundColor3 = Color3.fromRGB(38, 38, 48)
-    f.LayoutOrder = 0
+-- ─── UI builders ───
+local loIdx = 0
+local function NextLO() loIdx += 1 return loIdx end
+
+local function MkSection(txt)
+    local f = Instance.new("Frame", Body)
+    f.Size              = UDim2.new(0.94, 0, 0, 20)
+    f.BackgroundColor3  = Color3.fromRGB(35, 35, 50)
+    f.LayoutOrder       = NextLO()
     Instance.new("UICorner", f).CornerRadius = UDim.new(0, 5)
-    local lbl = Instance.new("TextLabel", f)
-    lbl.Size = UDim2.new(1, -8, 1, 0)
-    lbl.Position = UDim2.new(0, 8, 0, 0)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = label
-    lbl.Font = Enum.Font.GothamBold
-    lbl.TextSize = 11
-    lbl.TextColor3 = Color3.fromRGB(140, 200, 255)
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    local l = Instance.new("TextLabel", f)
+    l.Size              = UDim2.new(1, -8, 1, 0)
+    l.Position          = UDim2.new(0, 8, 0, 0)
+    l.BackgroundTransparency = 1
+    l.Text              = txt
+    l.Font              = Enum.Font.GothamBold
+    l.TextSize          = 11
+    l.TextColor3        = Color3.fromRGB(120, 180, 255)
+    l.TextXAlignment    = Enum.TextXAlignment.Left
 end
 
-local function MakeToggle(label, default, onToggle)
-    local state = default
-    local btn = Instance.new("TextButton", Scroll)
-    btn.Size = UDim2.new(0.94, 0, 0, 32)
-    btn.Font = Enum.Font.Gotham
-    btn.TextSize = 12
-    btn.TextXAlignment = Enum.TextXAlignment.Left
-    btn.BorderSizePixel = 0
+local function MkToggle(label, state, onChange)
+    local btn = Instance.new("TextButton", Body)
+    btn.Size              = UDim2.new(0.94, 0, 0, 30)
+    btn.Font              = Enum.Font.Gotham
+    btn.TextSize          = 12
+    btn.TextXAlignment    = Enum.TextXAlignment.Left
+    btn.BorderSizePixel   = 0
+    btn.LayoutOrder       = NextLO()
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 7)
 
-    local function Refresh()
-        btn.BackgroundColor3 = state and Color3.fromRGB(50, 180, 90) or Color3.fromRGB(45, 45, 55)
-        btn.TextColor3 = Color3.fromRGB(255,255,255)
-        btn.Text = "  " .. label .. (state and "  ✔" or "  ✘")
+    local function Refresh(v)
+        btn.BackgroundColor3 = v and Color3.fromRGB(40, 170, 80) or Color3.fromRGB(42, 42, 58)
+        btn.TextColor3       = Color3.fromRGB(255, 255, 255)
+        btn.Text             = "  " .. label .. (v and "   ✔" or "   ✘")
     end
-    Refresh()
+    Refresh(state)
 
     btn.MouseButton1Click:Connect(function()
         state = not state
-        Refresh()
-        onToggle(state)
+        Refresh(state)
+        onChange(state)
     end)
     return btn
 end
 
--- ===== Build UI Content =====
-MakeSection("  AUTO PICKUP (Drop / Event)")
-MakeToggle("Auto Pickup Items / Drops", false, function(v) cfg.AutoPickup = v end)
-
-MakeSection("  STEAL NIGHT")
-MakeToggle("Enable Steal Night", false, function(v) cfg.StealNight = v end)
-
-MakeSection("  CROP FILTER  (Steal)")
-MakeToggle("All Crops", true, function(v)
-    cfg.StealFilter.All = v
+-- ─── Build UI content ───
+MkSection(" ⚡ AUTO PICKUP  (Rainbow / Gold Seed)")
+MkToggle("Auto Pickup Event Seed", false, function(v)
+    Enabled.AutoPickup = v
 end)
 
-local cropOrder = {"Bamboo","Blueberry","Corn","Mushroom","Apple","Carrot","Pumpkin","Tomato","Watermelon","Wheat","Potato","Onion"}
-for _, crop in ipairs(cropOrder) do
+MkSection(" 🌙 STEAL NIGHT")
+MkToggle("Enable Steal Night", false, function(v)
+    Enabled.StealNight = v
+end)
+
+MkSection(" 🌱 CROP FILTER  (Steal Night)")
+MkToggle("All Crops (default ON)", true, function(v)
+    StealFilter.All = v
+end)
+for _, crop in ipairs(CROP_LIST) do
     local c = crop
-    MakeToggle(c, false, function(v)
-        cfg.StealFilter[c] = v
+    MkToggle(c, false, function(v)
+        StealFilter[c] = v
     end)
 end
 
--- ============ CORE LOGIC ============
-local ignoreMap = {}
-local function SetIgnore(obj, secs)
-    ignoreMap[obj] = tick() + secs
-end
-local function IsIgnored(obj)
-    local t = ignoreMap[obj]
-    return t and tick() < t
-end
+-- trigger first height
+task.defer(UpdateHeight)
 
--- Teleport safe
+-- ═══════════════════════════════════════════
+-- UTILITY
+-- ═══════════════════════════════════════════
+local ignoreMap = {}
+local function SetIgnore(obj, secs) ignoreMap[obj] = tick() + secs end
+local function IsIgnored(obj) return ignoreMap[obj] and tick() < ignoreMap[obj] end
+
+-- Teleport ke CFrame + sedikit offset atas
 local function TP(cf)
     pcall(function()
-        local char = LocalPlayer.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local char = LP.Character
+        local hrp  = char and char:FindFirstChild("HumanoidRootPart")
         if hrp then
-            hrp.CFrame = cf + Vector3.new(0, 3, 0) -- offset sedikit di atas biar ga nyangkut
+            hrp.CFrame = cf * CFrame.new(0, 3.5, 0)
+            task.wait(0.05)
         end
     end)
 end
 
--- Fire semua cara interact yang umum di roblox executors
-local function DoInteract(part)
+-- Coba semua cara interact
+local function Interact(part)
     pcall(function()
-        local char = LocalPlayer.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local char = LP.Character
+        local hrp  = char and char:FindFirstChild("HumanoidRootPart")
         if hrp then
+            -- Touch (cara paling reliable di GaG2 untuk pickup)
             if firetouchinterest then
                 firetouchinterest(hrp, part, 0)
-                task.wait(0.05)
+                task.wait(0.06)
                 firetouchinterest(hrp, part, 1)
             end
         end
         -- ProximityPrompt
-        local pp = part:FindFirstChildWhichIsA("ProximityPrompt", true)
+        local pp = part:FindFirstChildWhichIsA("ProximityPrompt")
+            or part.Parent and part.Parent:FindFirstChildWhichIsA("ProximityPrompt")
         if pp and pp.Enabled then
             fireproximityprompt(pp)
         end
         -- ClickDetector
-        local cd = part:FindFirstChildWhichIsA("ClickDetector", true)
+        local cd = part:FindFirstChildWhichIsA("ClickDetector")
         if cd then fireclickdetector(cd) end
     end)
 end
 
--- Cek apakah ada player lain dekat posisi itu
+-- Cek player lain dekat posisi (radius 55 stud = anggap penjaga ada)
 local function OwnerNearby(pos)
     for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer then
-            local char = p.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if hrp and (hrp.Position - pos).Magnitude < 60 then
+        if p ~= LP then
+            local c   = p.Character
+            local hrp = c and c:FindFirstChild("HumanoidRootPart")
+            if hrp and (hrp.Position - pos).Magnitude < 55 then
                 return true
             end
         end
@@ -241,110 +278,127 @@ local function OwnerNearby(pos)
     return false
 end
 
--- Cek apakah nama crop valid sesuai filter
+-- Filter crop name check
 local function CropAllowed(name)
-    if cfg.StealFilter.All then return true end
+    if StealFilter.All then return true end
     local lower = string.lower(name)
-    for _, crop in ipairs(cropOrder) do
-        if cfg.StealFilter[crop] and string.find(lower, string.lower(crop)) then
+    for _, crop in ipairs(CROP_LIST) do
+        if StealFilter[crop] and string.find(lower, string.lower(crop)) then
             return true
         end
     end
     return false
 end
 
--- ===== MAIN LOOP =====
+-- Malam = ClockTime < 6 atau > 18
+local function IsNight()
+    local t = Lighting.ClockTime
+    return t < 6 or t > 18
+end
+
+-- ═══════════════════════════════════════════
+-- MAIN LOOP
+-- ═══════════════════════════════════════════
 task.spawn(function()
     while true do
-        task.wait(0.4)
+        task.wait(0.35)
         pcall(function()
 
-            -- ---- AUTO PICKUP (Rainbow Seed & Gold Seed dari event) ----
-            if cfg.AutoPickup then
-                -- Scan semua descendants workspace
-                -- Event seed biasanya berbentuk Tool atau Model di dalam workspace langsung
-                -- atau di folder seperti "Drops", "EventDrops", dsb.
+            local char = LP.Character
+            local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+
+            -- ────────────────────────────────
+            -- AUTO PICKUP: Rainbow & Gold Seed
+            -- Scan SEMUA descendants workspace
+            -- GaG2 event drop = biasanya Model/Tool di workspace
+            -- dengan nama "Rainbow Seed" atau "Gold Seed"
+            -- ────────────────────────────────
+            if Enabled.AutoPickup then
                 for _, obj in ipairs(Workspace:GetDescendants()) do
                     if IsIgnored(obj) then continue end
+                    local n = string.lower(obj.Name)
 
-                    local targetPart = nil
-                    local targetRoot = nil
+                    -- Match: mengandung "rainbow" ATAU "gold", DAN "seed"
+                    local isTarget = (string.find(n, "rainbow") or string.find(n, "gold"))
+                                  and string.find(n, "seed")
 
-                    -- Kalau dia Tool (dropped)
-                    if obj:IsA("Tool") then
-                        local n = string.lower(obj.Name)
-                        -- Spesifik Rainbow Seed dan Gold Seed
-                        local isRainbow = string.find(n, "rainbow") and string.find(n, "seed")
-                        local isGold    = string.find(n, "gold")    and string.find(n, "seed")
-                        if isRainbow or isGold then
-                            targetPart = obj:FindFirstChild("Handle")
-                            targetRoot = obj
-                        end
+                    if not isTarget then continue end
+
+                    -- Cari BasePart yang bisa di-interact
+                    local target = nil
+                    if obj:IsA("BasePart") then
+                        target = obj
+                    elseif obj:IsA("Tool") then
+                        target = obj:FindFirstChild("Handle") or obj:FindFirstChildWhichIsA("BasePart")
+                    elseif obj:IsA("Model") then
+                        target = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
                     end
 
-                    -- Kalau dia BasePart dengan nama seed
-                    if obj:IsA("BasePart") and not targetPart then
-                        local n = string.lower(obj.Name)
-                        local isRainbow = string.find(n, "rainbow") and string.find(n, "seed")
-                        local isGold    = string.find(n, "gold")    and string.find(n, "seed")
-                        if isRainbow or isGold then
-                            targetPart = obj
-                            targetRoot = obj
-                        end
-                    end
-
-                    -- Kalau dia Model yang namanya Rainbow/Gold Seed
-                    if obj:IsA("Model") and not targetPart then
-                        local n = string.lower(obj.Name)
-                        local isRainbow = string.find(n, "rainbow") and string.find(n, "seed")
-                        local isGold    = string.find(n, "gold")    and string.find(n, "seed")
-                        if isRainbow or isGold then
-                            targetPart = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
-                            targetRoot = obj
-                        end
-                    end
-
-                    if targetPart and targetRoot then
-                        TP(targetPart.CFrame)
+                    if target then
+                        TP(target.CFrame)
                         task.wait(0.1)
-                        DoInteract(targetPart)
-                        SetIgnore(targetRoot, 5)
+                        Interact(target)
+                        -- Juga coba touch langsung hrp ke part
+                        pcall(function()
+                            if firetouchinterest then
+                                firetouchinterest(hrp, target, 0)
+                                task.wait(0.05)
+                                firetouchinterest(hrp, target, 1)
+                            end
+                        end)
+                        SetIgnore(obj, 5)
                     end
                 end
             end
 
-            -- ---- STEAL NIGHT ----
-            -- Hanya jalan saat malam: ClockTime < 6 (subuh) atau > 18 (sore ke malam)
-            local clockTime = Lighting.ClockTime
-            local isNight = clockTime < 6 or clockTime > 18
+            -- ────────────────────────────────
+            -- STEAL NIGHT
+            -- Hanya jalan saat malam, dan garden tidak dijaga
+            -- ────────────────────────────────
+            if Enabled.StealNight and IsNight() then
+                for _, obj in ipairs(Workspace:GetDescendants()) do
+                    if not Enabled.StealNight or not IsNight() then break end
+                    if IsIgnored(obj) then continue end
 
-            if cfg.StealNight and isNight then
-                for _, pp in ipairs(Workspace:GetDescendants()) do
-                    if not pp:IsA("ProximityPrompt") then continue end
+                    -- Cari ProximityPrompt yang punya action "Steal" atau "Harvest"
+                    local pp = nil
+                    if obj:IsA("ProximityPrompt") then
+                        pp = obj
+                    end
+                    if not pp then continue end
                     if not pp.Enabled then continue end
 
                     local actionLow = string.lower(pp.ActionText)
-                    -- GaG2 prompt untuk crop orang lain: "Steal" atau "Harvest"
-                    local isStealAction = string.find(actionLow, "steal") or string.find(actionLow, "harvest")
-                    if not isStealAction then continue end
+                    local isSteal = string.find(actionLow, "steal")
+                               or  string.find(actionLow, "harvest")
+                               or  string.find(actionLow, "pick")
+                    if not isSteal then continue end
 
+                    -- Ambil BasePart induk
                     local part = pp.Parent
-                    if not part or not part:IsA("BasePart") then continue end
+                    if not part then continue end
+                    -- Kalau parent bukan BasePart, coba parent.PrimaryPart
+                    if not part:IsA("BasePart") then
+                        part = part:IsA("Model") and (part.PrimaryPart or part:FindFirstChildWhichIsA("BasePart")) or nil
+                    end
+                    if not part then continue end
                     if IsIgnored(part) then continue end
 
                     -- Filter crop
-                    local fullName = part.Name .. " " .. (part.Parent and part.Parent.Name or "")
-                    if not CropAllowed(fullName) then continue end
+                    local nameCheck = pp.Parent.Name .. " " .. (pp.Parent.Parent and pp.Parent.Parent.Name or "")
+                    if not CropAllowed(nameCheck) then continue end
 
-                    -- Skip kalau ada owner di sekitar (radius 60 stud)
+                    -- Skip jika pemilik ada di sekitar
                     if OwnerNearby(part.Position) then continue end
 
-                    -- TP dan steal
+                    -- TP dan fire prompt
                     TP(part.CFrame)
-                    task.wait(0.15)
+                    task.wait(0.12)
                     fireproximityprompt(pp)
-                    SetIgnore(part, 6)
-                    task.wait(0.2)
+                    SetIgnore(part, 7)
+                    SetIgnore(pp.Parent, 7)
+                    task.wait(0.15)
                 end
             end
 
