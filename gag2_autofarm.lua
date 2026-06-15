@@ -139,12 +139,24 @@ local function isNightTime()
     return Lighting.ClockTime < 6 or Lighting.ClockTime > 18
 end
 
+local ignoreList = {}
+local function addToIgnore(item, duration)
+    ignoreList[item] = os.clock() + duration
+end
+local function isIgnored(item)
+    if ignoreList[item] and ignoreList[item] > os.clock() then
+        return true
+    end
+    return false
+end
+
+
 local function isOwnerNearby(targetPosition)
-    -- Check if any other player is within 60 studs of the target (garden)
+    -- Check if any other player is within 80 studs of the target (garden)
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
             local dist = (player.Character.HumanoidRootPart.Position - targetPosition).Magnitude
-            if dist < 60 then
+            if dist < 80 then
                 return true -- Someone is nearby
             end
         end
@@ -152,13 +164,29 @@ local function isOwnerNearby(targetPosition)
     return false
 end
 
-local function isRealItem(part)
-    if part:IsDescendantOf(LocalPlayer.Character) then return false end
-    if part:FindFirstChildWhichIsA("ProximityPrompt") then return true end
-    if part:FindFirstChildWhichIsA("TouchInterest") then return true end
-    if part:FindFirstChildWhichIsA("ClickDetector") then return true end
-    if part:IsA("BasePart") and not part.Anchored then return true end
-    return false
+local function getTargetPart(item)
+    if item:IsA("Model") and item.PrimaryPart then return item.PrimaryPart end
+    if item:IsA("Tool") and item:FindFirstChild("Handle") then return item.Handle end
+    if item:IsA("BasePart") then return item end
+    if item:IsA("Model") then return item:FindFirstChildWhichIsA("BasePart", true) end
+    return nil
+end
+
+local function isDroppedTool(item)
+    return item:IsA("Tool")
+end
+
+local function getDropsFolder()
+    return Workspace:FindFirstChild("Drops") or Workspace:FindFirstChild("DroppedItems") or Workspace
+end
+
+local function getDropItems()
+    local folder = getDropsFolder()
+    if folder == Workspace then
+        return Workspace:GetChildren()
+    else
+        return folder:GetDescendants()
+    end
 end
 
 local function teleportTo(cframe)
@@ -166,6 +194,7 @@ local function teleportTo(cframe)
         local Char = LocalPlayer.Character
         if Char and Char:FindFirstChild("HumanoidRootPart") then
             Char.HumanoidRootPart.CFrame = cframe
+            Char.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
             task.wait(0.2)
         end
     end)
@@ -192,21 +221,18 @@ task.spawn(function()
         
         -- 1. Try collecting Event Seeds first (High Priority)
         if getgenv().AutoCollectRainbow or getgenv().AutoCollectGold then
-            local dropsFolder = Workspace:FindFirstChild("Drops") or Workspace:FindFirstChild("DroppedItems") or Workspace
-            for _, item in ipairs(dropsFolder:GetDescendants()) do
-                if (getgenv().AutoCollectRainbow or getgenv().AutoCollectGold) and isRealItem(item) then
+            for _, item in ipairs(getDropItems()) do
+                if not isIgnored(item) then
                     local itemName = string.lower(item.Name)
-                    local targetPart = item:IsA("Model") and item.PrimaryPart or item
+                    local isRainbow = getgenv().AutoCollectRainbow and string.find(itemName, "rainbow") and string.find(itemName, "seed")
+                    local isGold = getgenv().AutoCollectGold and string.find(itemName, "gold") and string.find(itemName, "seed")
                     
-                    if targetPart then
-                        if getgenv().AutoCollectRainbow and string.find(itemName, "rainbow") then
+                    if isRainbow or isGold then
+                        local targetPart = getTargetPart(item)
+                        if targetPart then
                             teleportTo(targetPart.CFrame)
                             interactWith(targetPart)
-                            acted = true
-                            break
-                        elseif getgenv().AutoCollectGold and string.find(itemName, "gold") then
-                            teleportTo(targetPart.CFrame)
-                            interactWith(targetPart)
+                            addToIgnore(item, 3)
                             acted = true
                             break
                         end
@@ -217,18 +243,15 @@ task.spawn(function()
         
         -- 2. Try Auto Collect All Drops
         if not acted and getgenv().AutoCollectAll then
-            local dropsFolder = Workspace:FindFirstChild("Drops") or Workspace:FindFirstChild("DroppedItems") or Workspace
-            for _, item in ipairs(dropsFolder:GetDescendants()) do
-                if getgenv().AutoCollectAll and isRealItem(item) then
-                    local itemName = string.lower(item.Name)
-                    if string.find(itemName, "drop") or string.find(itemName, "seed") or (not item.Anchored and item:IsA("BasePart")) then
-                        local targetPart = item:IsA("Model") and item.PrimaryPart or item
-                        if targetPart then
-                            teleportTo(targetPart.CFrame)
-                            interactWith(targetPart)
-                            acted = true
-                            break
-                        end
+            for _, item in ipairs(getDropItems()) do
+                if not isIgnored(item) and isDroppedTool(item) then
+                    local targetPart = getTargetPart(item)
+                    if targetPart then
+                        teleportTo(targetPart.CFrame)
+                        interactWith(targetPart)
+                        addToIgnore(item, 3)
+                        acted = true
+                        break
                     end
                 end
             end
@@ -238,22 +261,16 @@ task.spawn(function()
         if not acted and getgenv().StealNight and isNightTime() then
             for _, item in ipairs(Workspace:GetDescendants()) do
                 if not getgenv().StealNight or not isNightTime() then break end
+                if isIgnored(item) then continue end
                 
                 local prompt = item:FindFirstChildWhichIsA("ProximityPrompt")
                 local isHarvestable = false
-                local targetPart = item:IsA("Model") and item.PrimaryPart or item
+                local targetPart = getTargetPart(item)
                 
-                if prompt then
+                if prompt and prompt.Enabled then
                     local actionText = string.lower(prompt.ActionText)
-                    if string.find(actionText, "harvest") or string.find(actionText, "steal") or string.find(actionText, "pick") then
+                    if string.find(actionText, "harvest") or string.find(actionText, "steal") then
                         isHarvestable = true
-                    end
-                else
-                    local itemName = string.lower(item.Name)
-                    if string.find(itemName, "fruit") or string.find(itemName, "crop") then
-                        if targetPart and isRealItem(targetPart) then
-                            isHarvestable = true
-                        end
                     end
                 end
                 
@@ -266,6 +283,7 @@ task.spawn(function()
                         else
                             interactWith(targetPart)
                         end
+                        addToIgnore(item, 5)
                         acted = true
                         task.wait(0.2)
                         break
