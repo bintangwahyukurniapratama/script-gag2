@@ -1,301 +1,239 @@
--- Kyriel Hub - GaG 2 Perfected Auto Farm Script (Mobile Friendly Tabbed UI)
+-- Kyriel Hub | GaG2 | Steal Night + Auto Pickup ONLY
+-- Mobile friendly, draggable, compact
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local CoreGui = game:GetService("CoreGui")
-local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
--- Cleanup old
-if CoreGui:FindFirstChild("KyrielMobileHub") then
-    CoreGui.KyrielMobileHub:Destroy()
-end
+-- Cleanup
+if CoreGui:FindFirstChild("KyrielHub") then CoreGui.KyrielHub:Destroy() end
 
--- Global Config
-getgenv().KyrielConfig = {
-    ClaimRainbow = false,
-    ClaimGold = false,
-    ClaimAll = false,
-    
+-- State
+local cfg = {
     StealNight = false,
+    AutoPickup  = false,
     StealFilter = {
-        Bamboo = false, Blueberry = false, Corn = false, Mushroom = false,
-        Apple = false, Carrot = false, Pumpkin = false, Tomato = false, 
-        Watermelon = false, Wheat = false, Potato = false, Onion = false
-    },
-    
-    WalkSpeed = 16,
-    JumpPower = 50,
-    SpeedEnabled = false,
-    JumpEnabled = false,
-    
-    AutoSell = false,
-    AutoBuy = false,
-    TargetBuy = "None",
-    TargetSell = "None",
+        All        = true,
+        Bamboo     = false,
+        Blueberry  = false,
+        Corn       = false,
+        Mushroom   = false,
+        Apple      = false,
+        Carrot     = false,
+        Pumpkin    = false,
+        Tomato     = false,
+        Watermelon = false,
+        Wheat      = false,
+        Potato     = false,
+        Onion      = false,
+    }
 }
 
-local CropsList = {"None", "Bamboo", "Blueberry", "Corn", "Mushroom", "Apple", "Carrot", "Pumpkin", "Tomato", "Watermelon", "Wheat", "Potato", "Onion"}
+-- ============ UI ============
+local SG = Instance.new("ScreenGui")
+SG.Name = "KyrielHub"
+SG.ResetOnSpawn = false
+SG.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+SG.Parent = CoreGui
 
--- Custom Mobile UI
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "KyrielMobileHub"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = CoreGui
+-- Main frame (kecil, di tengah atas)
+local Main = Instance.new("Frame")
+Main.Name = "Main"
+Main.Size = UDim2.new(0, 270, 0, 380)
+Main.Position = UDim2.new(0, 10, 0, 10)   -- pojok kiri atas, ga nembus
+Main.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+Main.Active = true
+Main.Draggable = true
+Main.Parent = SG
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
 
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 260, 0, 300)
-MainFrame.Position = UDim2.new(0.5, -130, 0.5, -150)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Parent = ScreenGui
+-- Stroke
+local stroke = Instance.new("UIStroke", Main)
+stroke.Color = Color3.fromRGB(80, 80, 100)
+stroke.Thickness = 1
 
-local UICornerMain = Instance.new("UICorner")
-UICornerMain.CornerRadius = UDim.new(0, 8)
-UICornerMain.Parent = MainFrame
+-- Title bar
+local TitleBar = Instance.new("Frame", Main)
+TitleBar.Size = UDim2.new(1, 0, 0, 32)
+TitleBar.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 10)
+-- cover agar corner bawah title ga kelihatan
+local cover = Instance.new("Frame", TitleBar)
+cover.Size = UDim2.new(1, 0, 0.5, 0)
+cover.Position = UDim2.new(0, 0, 0.5, 0)
+cover.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+cover.BorderSizePixel = 0
 
--- Top Bar
-local TopBar = Instance.new("Frame")
-TopBar.Size = UDim2.new(1, 0, 0, 30)
-TopBar.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-TopBar.Parent = MainFrame
+local TitleLbl = Instance.new("TextLabel", TitleBar)
+TitleLbl.Size = UDim2.new(1, -40, 1, 0)
+TitleLbl.Position = UDim2.new(0, 10, 0, 0)
+TitleLbl.BackgroundTransparency = 1
+TitleLbl.Text = "⚡ Kyriel | GaG 2"
+TitleLbl.Font = Enum.Font.GothamBold
+TitleLbl.TextSize = 13
+TitleLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleLbl.TextXAlignment = Enum.TextXAlignment.Left
 
-local UICornerTop = Instance.new("UICorner")
-UICornerTop.CornerRadius = UDim.new(0, 8)
-UICornerTop.Parent = TopBar
-
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -40, 1, 0)
-Title.Position = UDim2.new(0, 10, 0, 0)
-Title.BackgroundTransparency = 1
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Text = "Kyriel Hub | GaG 2"
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 14
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Parent = TopBar
-
-local MinBtn = Instance.new("TextButton")
-MinBtn.Size = UDim2.new(0, 30, 0, 30)
-MinBtn.Position = UDim2.new(1, -30, 0, 0)
-MinBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
-MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinBtn.Text = "-"
+local MinBtn = Instance.new("TextButton", TitleBar)
+MinBtn.Size = UDim2.new(0, 28, 0, 28)
+MinBtn.Position = UDim2.new(1, -32, 0, 2)
+MinBtn.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
+MinBtn.Text = "−"
 MinBtn.Font = Enum.Font.GothamBold
 MinBtn.TextSize = 16
+MinBtn.TextColor3 = Color3.fromRGB(255,255,255)
 MinBtn.BorderSizePixel = 0
-MinBtn.Parent = TopBar
+Instance.new("UICorner", MinBtn).CornerRadius = UDim.new(0, 6)
 
+-- Content scroll
+local Scroll = Instance.new("ScrollingFrame", Main)
+Scroll.Name = "Scroll"
+Scroll.Size = UDim2.new(1, 0, 1, -36)
+Scroll.Position = UDim2.new(0, 0, 0, 34)
+Scroll.BackgroundTransparency = 1
+Scroll.ScrollBarThickness = 3
+Scroll.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 100)
+Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+
+local List = Instance.new("UIListLayout", Scroll)
+List.SortOrder = Enum.SortOrder.LayoutOrder
+List.Padding = UDim.new(0, 5)
+List.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+local Padding = Instance.new("UIPadding", Scroll)
+Padding.PaddingTop = UDim.new(0, 6)
+
+-- Auto resize scroll
+local function UpdateScroll()
+    Scroll.CanvasSize = UDim2.new(0, 0, 0, List.AbsoluteContentSize.Y + 14)
+end
+List:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(UpdateScroll)
+
+-- Minimize
 local minimized = false
 MinBtn.MouseButton1Click:Connect(function()
     minimized = not minimized
-    if minimized then
-        MainFrame.Size = UDim2.new(0, 260, 0, 30)
-        MinBtn.Text = "+"
-        MinBtn.BackgroundColor3 = Color3.fromRGB(80, 255, 80)
-    else
-        MainFrame.Size = UDim2.new(0, 260, 0, 300)
-        MinBtn.Text = "-"
-        MinBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
-    end
+    Scroll.Visible = not minimized
+    Main.Size = minimized and UDim2.new(0, 270, 0, 36) or UDim2.new(0, 270, 0, 380)
+    MinBtn.Text = minimized and "+" or "−"
+    MinBtn.BackgroundColor3 = minimized and Color3.fromRGB(60, 200, 80) or Color3.fromRGB(255, 70, 70)
 end)
 
--- Tab Buttons Container
-local TabContainer = Instance.new("Frame")
-TabContainer.Size = UDim2.new(1, 0, 0, 30)
-TabContainer.Position = UDim2.new(0, 0, 0, 30)
-TabContainer.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-TabContainer.Parent = MainFrame
-
-local Tab1Btn = Instance.new("TextButton")
-Tab1Btn.Size = UDim2.new(0.33, 0, 1, 0)
-Tab1Btn.Position = UDim2.new(0, 0, 0, 0)
-Tab1Btn.BackgroundColor3 = Color3.fromRGB(60, 130, 255)
-Tab1Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-Tab1Btn.Text = "Event"
-Tab1Btn.Font = Enum.Font.GothamBold
-Tab1Btn.TextSize = 12
-Tab1Btn.Parent = TabContainer
-
-local Tab2Btn = Instance.new("TextButton")
-Tab2Btn.Size = UDim2.new(0.34, 0, 1, 0)
-Tab2Btn.Position = UDim2.new(0.33, 0, 0, 0)
-Tab2Btn.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-Tab2Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-Tab2Btn.Text = "Steal"
-Tab2Btn.Font = Enum.Font.GothamBold
-Tab2Btn.TextSize = 12
-Tab2Btn.Parent = TabContainer
-
-local Tab3Btn = Instance.new("TextButton")
-Tab3Btn.Size = UDim2.new(0.33, 0, 1, 0)
-Tab3Btn.Position = UDim2.new(0.67, 0, 0, 0)
-Tab3Btn.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-Tab3Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-Tab3Btn.Text = "Misc"
-Tab3Btn.Font = Enum.Font.GothamBold
-Tab3Btn.TextSize = 12
-Tab3Btn.Parent = TabContainer
-
--- Scrolling Frames
-local Scroll1 = Instance.new("ScrollingFrame")
-Scroll1.Size = UDim2.new(1, 0, 1, -65)
-Scroll1.Position = UDim2.new(0, 0, 0, 65)
-Scroll1.BackgroundTransparency = 1
-Scroll1.ScrollBarThickness = 4
-Scroll1.Visible = true
-Scroll1.Parent = MainFrame
-
-local Scroll2 = Instance.new("ScrollingFrame")
-Scroll2.Size = UDim2.new(1, 0, 1, -65)
-Scroll2.Position = UDim2.new(0, 0, 0, 65)
-Scroll2.BackgroundTransparency = 1
-Scroll2.ScrollBarThickness = 4
-Scroll2.Visible = false
-Scroll2.Parent = MainFrame
-
-local Scroll3 = Instance.new("ScrollingFrame")
-Scroll3.Size = UDim2.new(1, 0, 1, -65)
-Scroll3.Position = UDim2.new(0, 0, 0, 65)
-Scroll3.BackgroundTransparency = 1
-Scroll3.ScrollBarThickness = 4
-Scroll3.Visible = false
-Scroll3.Parent = MainFrame
-
-local UIList1 = Instance.new("UIListLayout", Scroll1)
-UIList1.Padding = UDim.new(0, 5)
-UIList1.HorizontalAlignment = Enum.HorizontalAlignment.Center
-local UIList2 = Instance.new("UIListLayout", Scroll2)
-UIList2.Padding = UDim.new(0, 5)
-UIList2.HorizontalAlignment = Enum.HorizontalAlignment.Center
-local UIList3 = Instance.new("UIListLayout", Scroll3)
-UIList3.Padding = UDim.new(0, 5)
-UIList3.HorizontalAlignment = Enum.HorizontalAlignment.Center
-
--- Tab Switching Logic
-local function SwitchTab(tabNum)
-    Scroll1.Visible = (tabNum == 1)
-    Scroll2.Visible = (tabNum == 2)
-    Scroll3.Visible = (tabNum == 3)
-    
-    Tab1Btn.BackgroundColor3 = (tabNum == 1) and Color3.fromRGB(60, 130, 255) or Color3.fromRGB(40, 40, 45)
-    Tab2Btn.BackgroundColor3 = (tabNum == 2) and Color3.fromRGB(60, 130, 255) or Color3.fromRGB(40, 40, 45)
-    Tab3Btn.BackgroundColor3 = (tabNum == 3) and Color3.fromRGB(60, 130, 255) or Color3.fromRGB(40, 40, 45)
+-- ===== UI Builders =====
+local function MakeSection(label)
+    local f = Instance.new("Frame", Scroll)
+    f.Size = UDim2.new(0.94, 0, 0, 20)
+    f.BackgroundColor3 = Color3.fromRGB(38, 38, 48)
+    f.LayoutOrder = 0
+    Instance.new("UICorner", f).CornerRadius = UDim.new(0, 5)
+    local lbl = Instance.new("TextLabel", f)
+    lbl.Size = UDim2.new(1, -8, 1, 0)
+    lbl.Position = UDim2.new(0, 8, 0, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = label
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextSize = 11
+    lbl.TextColor3 = Color3.fromRGB(140, 200, 255)
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
 end
 
-Tab1Btn.MouseButton1Click:Connect(function() SwitchTab(1) end)
-Tab2Btn.MouseButton1Click:Connect(function() SwitchTab(2) end)
-Tab3Btn.MouseButton1Click:Connect(function() SwitchTab(3) end)
-
--- UI Element Creators
-local function CreateToggle(parent, text, default, callback)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.9, 0, 0, 30)
-    btn.BackgroundColor3 = default and Color3.fromRGB(60, 200, 100) or Color3.fromRGB(50, 50, 55)
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Text = "  " .. text .. (default and " [ON]" or " [OFF]")
+local function MakeToggle(label, default, onToggle)
+    local state = default
+    local btn = Instance.new("TextButton", Scroll)
+    btn.Size = UDim2.new(0.94, 0, 0, 32)
     btn.Font = Enum.Font.Gotham
     btn.TextSize = 12
     btn.TextXAlignment = Enum.TextXAlignment.Left
-    btn.Parent = parent
-    
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-    
-    local state = default
+    btn.BorderSizePixel = 0
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 7)
+
+    local function Refresh()
+        btn.BackgroundColor3 = state and Color3.fromRGB(50, 180, 90) or Color3.fromRGB(45, 45, 55)
+        btn.TextColor3 = Color3.fromRGB(255,255,255)
+        btn.Text = "  " .. label .. (state and "  ✔" or "  ✘")
+    end
+    Refresh()
+
     btn.MouseButton1Click:Connect(function()
         state = not state
-        btn.BackgroundColor3 = state and Color3.fromRGB(60, 200, 100) or Color3.fromRGB(50, 50, 55)
-        btn.Text = "  " .. text .. (state and " [ON]" or " [OFF]")
-        callback(state)
+        Refresh()
+        onToggle(state)
     end)
     return btn
 end
 
-local function CreateCyclic(parent, text, options, defaultIdx, callback)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.9, 0, 0, 30)
-    btn.BackgroundColor3 = Color3.fromRGB(150, 80, 200)
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Text = "  " .. text .. ": " .. options[defaultIdx]
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 12
-    btn.TextXAlignment = Enum.TextXAlignment.Left
-    btn.Parent = parent
-    
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-    
-    local idx = defaultIdx
-    btn.MouseButton1Click:Connect(function()
-        idx = idx + 1
-        if idx > #options then idx = 1 end
-        btn.Text = "  " .. text .. ": " .. options[idx]
-        callback(options[idx])
-    end)
-    return btn
-end
+-- ===== Build UI Content =====
+MakeSection("  AUTO PICKUP (Drop / Event)")
+MakeToggle("Auto Pickup Items / Drops", false, function(v) cfg.AutoPickup = v end)
 
--- Tab 1: Event
-CreateToggle(Scroll1, "Auto Rainbow Seed", false, function(v) getgenv().KyrielConfig.ClaimRainbow = v end)
-CreateToggle(Scroll1, "Auto Gold Seed", false, function(v) getgenv().KyrielConfig.ClaimGold = v end)
-CreateToggle(Scroll1, "Auto All Drops", false, function(v) getgenv().KyrielConfig.ClaimAll = v end)
+MakeSection("  STEAL NIGHT")
+MakeToggle("Enable Steal Night", false, function(v) cfg.StealNight = v end)
 
--- Tab 2: Steal
-CreateToggle(Scroll2, "Enable Steal Night", false, function(v) getgenv().KyrielConfig.StealNight = v end)
-for cropName, _ in pairs(getgenv().KyrielConfig.StealFilter) do
-    CreateToggle(Scroll2, "Steal " .. cropName, false, function(v) getgenv().KyrielConfig.StealFilter[cropName] = v end)
-end
-
--- Tab 3: Misc
-CreateToggle(Scroll3, "Speed Mod (16-100)", false, function(v) getgenv().KyrielConfig.SpeedEnabled = v end)
-CreateCyclic(Scroll3, "WalkSpeed", {"16","30","50","80","100"}, 1, function(v) getgenv().KyrielConfig.WalkSpeed = tonumber(v) end)
-CreateToggle(Scroll3, "Jump Mod (50-200)", false, function(v) getgenv().KyrielConfig.JumpEnabled = v end)
-CreateCyclic(Scroll3, "JumpPower", {"50","80","120","150","200"}, 1, function(v) getgenv().KyrielConfig.JumpPower = tonumber(v) end)
-CreateCyclic(Scroll3, "Target Sell", CropsList, 1, function(v) getgenv().KyrielConfig.TargetSell = v end)
-CreateToggle(Scroll3, "Auto Sell Crop", false, function(v) getgenv().KyrielConfig.AutoSell = v end)
-CreateCyclic(Scroll3, "Target Buy", CropsList, 1, function(v) getgenv().KyrielConfig.TargetBuy = v end)
-CreateToggle(Scroll3, "Auto Buy Seed", false, function(v) getgenv().KyrielConfig.AutoBuy = v end)
-
--- Update Canvas Sizes
-task.spawn(function()
-    while task.wait(1) do
-        Scroll1.CanvasSize = UDim2.new(0, 0, 0, UIList1.AbsoluteContentSize.Y + 10)
-        Scroll2.CanvasSize = UDim2.new(0, 0, 0, UIList2.AbsoluteContentSize.Y + 10)
-        Scroll3.CanvasSize = UDim2.new(0, 0, 0, UIList3.AbsoluteContentSize.Y + 10)
-    end
+MakeSection("  CROP FILTER  (Steal)")
+MakeToggle("All Crops", true, function(v)
+    cfg.StealFilter.All = v
 end)
 
--- ================= LOGIC LOOP =================
-local function teleportTo(cframe)
+local cropOrder = {"Bamboo","Blueberry","Corn","Mushroom","Apple","Carrot","Pumpkin","Tomato","Watermelon","Wheat","Potato","Onion"}
+for _, crop in ipairs(cropOrder) do
+    local c = crop
+    MakeToggle(c, false, function(v)
+        cfg.StealFilter[c] = v
+    end)
+end
+
+-- ============ CORE LOGIC ============
+local ignoreMap = {}
+local function SetIgnore(obj, secs)
+    ignoreMap[obj] = tick() + secs
+end
+local function IsIgnored(obj)
+    local t = ignoreMap[obj]
+    return t and tick() < t
+end
+
+-- Teleport safe
+local function TP(cf)
     pcall(function()
-        local Char = LocalPlayer.Character
-        if Char and Char:FindFirstChild("HumanoidRootPart") then
-            Char.HumanoidRootPart.CFrame = cframe
-            Char.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
-            task.wait(0.2)
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.CFrame = cf + Vector3.new(0, 3, 0) -- offset sedikit di atas biar ga nyangkut
         end
     end)
 end
 
-local function interactWith(part)
+-- Fire semua cara interact yang umum di roblox executors
+local function DoInteract(part)
     pcall(function()
-        local Char = LocalPlayer.Character
-        if Char and Char:FindFirstChild("HumanoidRootPart") then
-            firetouchinterest(Char.HumanoidRootPart, part, 0)
-            firetouchinterest(Char.HumanoidRootPart, part, 1)
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            if firetouchinterest then
+                firetouchinterest(hrp, part, 0)
+                task.wait(0.05)
+                firetouchinterest(hrp, part, 1)
+            end
         end
-        local prompt = part:FindFirstChildWhichIsA("ProximityPrompt")
-        if prompt then fireproximityprompt(prompt) end
-        local click = part:FindFirstChildWhichIsA("ClickDetector")
-        if click then fireclickdetector(click) end
+        -- ProximityPrompt
+        local pp = part:FindFirstChildWhichIsA("ProximityPrompt", true)
+        if pp and pp.Enabled then
+            fireproximityprompt(pp)
+        end
+        -- ClickDetector
+        local cd = part:FindFirstChildWhichIsA("ClickDetector", true)
+        if cd then fireclickdetector(cd) end
     end)
 end
 
-local function isOwnerNearby(targetPosition)
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local dist = (player.Character.HumanoidRootPart.Position - targetPosition).Magnitude
-            if dist < 80 then
+-- Cek apakah ada player lain dekat posisi itu
+local function OwnerNearby(pos)
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            local char = p.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp and (hrp.Position - pos).Magnitude < 60 then
                 return true
             end
         end
@@ -303,173 +241,86 @@ local function isOwnerNearby(targetPosition)
     return false
 end
 
--- Speed & Jump Loop
-RunService.RenderStepped:Connect(function()
-    pcall(function()
-        local Char = LocalPlayer.Character
-        if Char and Char:FindFirstChild("Humanoid") then
-            if getgenv().KyrielConfig.SpeedEnabled then
-                Char.Humanoid.WalkSpeed = getgenv().KyrielConfig.WalkSpeed
-            end
-            if getgenv().KyrielConfig.JumpEnabled then
-                Char.Humanoid.UseJumpPower = true
-                Char.Humanoid.JumpPower = getgenv().KyrielConfig.JumpPower
-            end
+-- Cek apakah nama crop valid sesuai filter
+local function CropAllowed(name)
+    if cfg.StealFilter.All then return true end
+    local lower = string.lower(name)
+    for _, crop in ipairs(cropOrder) do
+        if cfg.StealFilter[crop] and string.find(lower, string.lower(crop)) then
+            return true
         end
-    end)
-end)
-
-local ignoreList = {}
-local function addToIgnore(item, duration)
-    ignoreList[item] = os.clock() + duration
-end
-local function isIgnored(item)
-    return ignoreList[item] and ignoreList[item] > os.clock()
+    end
+    return false
 end
 
--- Main Farm Loop
+-- ===== MAIN LOOP =====
 task.spawn(function()
-    while task.wait(0.5) do
-        local acted = false
-        local cfg = getgenv().KyrielConfig
-        
-        -- Auto Drops (Claim Event)
-        if not acted and (cfg.ClaimRainbow or cfg.ClaimGold or cfg.ClaimAll) then
-            local folder = Workspace:FindFirstChild("Drops") or Workspace:FindFirstChild("DroppedItems") or Workspace
-            local items = folder == Workspace and Workspace:GetChildren() or folder:GetDescendants()
-            for _, item in ipairs(items) do
-                if not isIgnored(item) then
-                    local itemName = string.lower(item.Name)
-                    local isRainbow = cfg.ClaimRainbow and string.find(itemName, "rainbow") and string.find(itemName, "seed")
-                    local isGold = cfg.ClaimGold and string.find(itemName, "gold") and string.find(itemName, "seed")
-                    local isDrop = cfg.ClaimAll and item:IsA("Tool")
-                    
-                    if isRainbow or isGold or isDrop then
-                        local tPart = item:FindFirstChild("Handle") or (item:IsA("BasePart") and item)
-                        if tPart then
-                            teleportTo(tPart.CFrame)
-                            interactWith(tPart)
-                            addToIgnore(item, 3)
-                            acted = true
-                            break
-                        end
-                    end
-                end
-            end
-        end
+    while true do
+        task.wait(0.4)
+        local ok, err = pcall(function()
 
-        -- Steal Night (FIXED)
-        -- Removing rigid time check, relying on "Steal" action text and optionally night time
-        if not acted and cfg.StealNight then
-            for _, item in ipairs(Workspace:GetDescendants()) do
-                if isIgnored(item) then continue end
-                
-                local prompt = item:FindFirstChildWhichIsA("ProximityPrompt")
-                local isHarvestable = false
-                local tPart = nil
-                
-                if prompt and prompt.Enabled then
-                    local actionText = string.lower(prompt.ActionText)
-                    -- If the game specifically says "Steal" it's definitely stealable.
-                    -- Some games say "Harvest" but it belongs to someone else.
-                    if string.find(actionText, "steal") or string.find(actionText, "harvest") then
-                        
-                        tPart = item:IsA("Model") and item.PrimaryPart or (item:IsA("BasePart") and item or item.Parent)
-                        local parentName = item.Parent and item.Parent.Name or ""
-                        local itemName = string.lower(parentName .. " " .. item.Name)
-                        
-                        -- Cek filter crop
-                        local validCrop = false
-                        for cropName, isSelected in pairs(cfg.StealFilter) do
-                            if isSelected and string.find(itemName, string.lower(cropName)) then
-                                validCrop = true
-                                break
-                            end
-                        end
-                        
-                        if validCrop then
-                            isHarvestable = true
+            -- ---- AUTO PICKUP ----
+            if cfg.AutoPickup then
+                -- Scan seluruh workspace untuk Tool atau item yang bisa dipickup
+                for _, obj in ipairs(Workspace:GetDescendants()) do
+                    if IsIgnored(obj) then continue end
+                    -- Tool yang jatuh ke workspace (dropped item)
+                    if obj:IsA("Tool") then
+                        local handle = obj:FindFirstChild("Handle")
+                        if handle then
+                            TP(handle.CFrame)
+                            DoInteract(handle)
+                            SetIgnore(obj, 4)
                         end
                     end
-                end
-                
-                if isHarvestable and tPart and tPart:IsA("BasePart") then
-                    -- Cek owner nearby biar ga ketahuan
-                    if not isOwnerNearby(tPart.Position) then
-                        teleportTo(tPart.CFrame)
-                        if prompt then
-                            fireproximityprompt(prompt)
-                        else
-                            interactWith(tPart)
-                        end
-                        addToIgnore(item, 5)
-                        acted = true
-                        task.wait(0.2)
-                        break
-                    end
-                end
-            end
-        end
-        
-        -- Auto Sell
-        if not acted and cfg.AutoSell and cfg.TargetSell ~= "None" then
-            for _, prompt in ipairs(Workspace:GetDescendants()) do
-                if prompt:IsA("ProximityPrompt") then
-                    local text = string.lower(prompt.ActionText .. " " .. prompt.ObjectText .. " " .. prompt.Parent.Name)
-                    if string.find(text, "sell") or string.find(text, "merchant") or string.find(text, "shop") then
-                        local tPart = prompt.Parent
-                        if tPart:IsA("BasePart") then
-                            teleportTo(tPart.CFrame)
-                            fireproximityprompt(prompt)
-                            task.wait(1.5) -- Load UI time
-                            
-                            for _, ui in ipairs(LocalPlayer.PlayerGui:GetDescendants()) do
-                                if ui:IsA("TextButton") then
-                                    local uiText = string.lower(ui.Text)
-                                    if string.find(uiText, string.lower(cfg.TargetSell)) or string.find(uiText, "sell all") then
-                                        if getconnections then
-                                            for _, conn in ipairs(getconnections(ui.MouseButton1Click)) do
-                                                conn:Fire()
-                                            end
-                                        else
-                                            local VirtualUser = game:GetService("VirtualUser")
-                                            VirtualUser:ClickButton1(Vector2.new(ui.AbsolutePosition.X + ui.AbsoluteSize.X/2, ui.AbsolutePosition.Y + ui.AbsoluteSize.Y/2))
-                                        end
-                                        acted = true
-                                        break
-                                    end
-                                end
-                            end
-                            break
+                    -- BasePart dengan nama mengandung "seed" atau "drop"
+                    if obj:IsA("BasePart") then
+                        local n = string.lower(obj.Name)
+                        if string.find(n, "seed") or string.find(n, "drop") or string.find(n, "reward") then
+                            TP(obj.CFrame)
+                            DoInteract(obj)
+                            SetIgnore(obj, 4)
                         end
                     end
                 end
             end
-        end
 
-        -- Auto Buy
-        if not acted and cfg.AutoBuy and cfg.TargetBuy ~= "None" then
-            for _, prompt in ipairs(Workspace:GetDescendants()) do
-                if prompt:IsA("ProximityPrompt") then
-                    local pText = string.lower(prompt.ActionText .. " " .. prompt.ObjectText)
-                    local parentName = string.lower(prompt.Parent.Name)
-                    local targetName = string.lower(cfg.TargetBuy)
-                    
-                    if (string.find(pText, "buy") or string.find(pText, "purchase") or string.find(pText, "$")) then
-                        if string.find(pText, targetName) or string.find(parentName, targetName) then
-                            local tPart = prompt.Parent
-                            if tPart:IsA("BasePart") then
-                                teleportTo(tPart.CFrame)
-                                fireproximityprompt(prompt)
-                                acted = true
-                                task.wait(1)
-                                break
-                            end
-                        end
-                    end
+            -- ---- STEAL NIGHT ----
+            if cfg.StealNight then
+                -- Scan semua ProximityPrompt di workspace
+                for _, pp in ipairs(Workspace:GetDescendants()) do
+                    if not pp:IsA("ProximityPrompt") then continue end
+                    if not pp.Enabled then continue end
+
+                    local actionLow = string.lower(pp.ActionText)
+                    -- GaG2 pakai "Harvest" dan beberapa pake "Steal"
+                    local isStealAction = string.find(actionLow, "steal") or string.find(actionLow, "harvest")
+                    if not isStealAction then continue end
+
+                    local part = pp.Parent
+                    if not part or not part:IsA("BasePart") then continue end
+                    if IsIgnored(part) then continue end
+
+                    -- Cek nama item/parent untuk filter crop
+                    local fullName = part.Name .. " " .. (part.Parent and part.Parent.Name or "")
+                    if not CropAllowed(fullName) then continue end
+
+                    -- Jangan steal kalau owner dekat
+                    if OwnerNearby(part.Position) then continue end
+
+                    -- Teleport dan steal
+                    TP(part.CFrame)
+                    task.wait(0.15)
+                    fireproximityprompt(pp)
+                    SetIgnore(part, 5)
+                    task.wait(0.2)
                 end
             end
-        end
 
+        end)
+
+        if not ok then
+            -- silent fail, jalan terus
+        end
     end
 end)
