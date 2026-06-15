@@ -1,7 +1,8 @@
--- GaG 2 Perfected Auto Farm Script v8 (Rayfield UI)
+-- GaG 2 Perfected Auto Farm Script v9 (Rayfield UI + Mobile Logo + Filters)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
+local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 
 getgenv().AutoCollectRainbow = false
@@ -13,6 +14,9 @@ getgenv().WalkSpeedValue = 16
 getgenv().JumpPowerToggle = false
 getgenv().JumpPowerValue = 50
 getgenv().SafeHomeCFrame = nil
+
+getgenv().StealCrops = {"All"}
+getgenv().StealMutations = {"All"}
 
 -- Utility Functions
 local ignoreList = {}
@@ -139,7 +143,45 @@ task.spawn(function()
                 if prompt and prompt.Enabled then
                     local actionText = string.lower(prompt.ActionText)
                     if string.find(actionText, "harvest") or string.find(actionText, "steal") then
-                        isHarvestable = true
+                        
+                        -- Evaluate Crop & Mutation Filters
+                        local parentName = item.Parent and item.Parent.Name or ""
+                        local itemName = string.lower(parentName .. " " .. item.Name)
+                        
+                        local validCrop = false
+                        if table.find(getgenv().StealCrops, "All") then
+                            validCrop = true
+                        else
+                            for _, crop in ipairs(getgenv().StealCrops) do
+                                if string.find(itemName, string.lower(crop)) then
+                                    validCrop = true
+                                    break
+                                end
+                            end
+                        end
+                        
+                        local validMut = false
+                        if table.find(getgenv().StealMutations, "All") then
+                            validMut = true
+                        else
+                            local hasMut = false
+                            for _, mut in ipairs({"bloodlit", "electric", "frozen", "rainbow", "starstruck", "gold", "chained"}) do
+                                if string.find(itemName, mut) then
+                                    hasMut = true
+                                    if table.find(getgenv().StealMutations, mut:gsub("^%l", string.upper)) then
+                                        validMut = true
+                                        break
+                                    end
+                                end
+                            end
+                            if not hasMut and table.find(getgenv().StealMutations, "None") then
+                                validMut = true
+                            end
+                        end
+                        
+                        if validCrop and validMut then
+                            isHarvestable = true
+                        end
                     end
                 end
                 
@@ -185,6 +227,35 @@ task.spawn(function()
                 Char.Humanoid.JumpPower = getgenv().JumpPowerValue
             end
         end
+    end
+end)
+
+-- Floating Logo Toggle (For Mobile/Small Screens)
+if CoreGui:FindFirstChild("KyrielToggleLogo") then
+    CoreGui.KyrielToggleLogo:Destroy()
+end
+
+local ToggleGui = Instance.new("ScreenGui")
+ToggleGui.Name = "KyrielToggleLogo"
+ToggleGui.Parent = CoreGui
+
+local ToggleBtn = Instance.new("ImageButton")
+ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
+ToggleBtn.Position = UDim2.new(0.5, -25, 0, 10)
+ToggleBtn.Image = "rbxassetid://4483362458" -- Ninja Icon
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+ToggleBtn.UICorner = Instance.new("UICorner", ToggleBtn)
+ToggleBtn.UICorner.CornerRadius = UDim.new(0.5, 0)
+ToggleBtn.Active = true
+ToggleBtn.Draggable = true
+ToggleBtn.Parent = ToggleGui
+
+local isUiVisible = true
+ToggleBtn.MouseButton1Click:Connect(function()
+    isUiVisible = not isUiVisible
+    local rayfieldGui = CoreGui:FindFirstChild("Rayfield")
+    if rayfieldGui then
+        rayfieldGui.Enabled = isUiVisible
     end
 end)
 
@@ -244,10 +315,34 @@ MainTab:CreateToggle({
 })
 
 -- Steal Tab
-StealTab:CreateSection("Steal Features")
+StealTab:CreateSection("Steal Filters")
+
+StealTab:CreateDropdown({
+   Name = "Select Crops to Steal",
+   Options = {"All", "Bamboo", "Blueberry", "Corn", "Mushroom", "Apple", "Carrot", "Pumpkin", "Tomato", "Watermelon"},
+   CurrentOption = {"All"},
+   MultipleOptions = true,
+   Flag = "DropdownCrops",
+   Callback = function(Options)
+        getgenv().StealCrops = Options
+   end,
+})
+
+StealTab:CreateDropdown({
+   Name = "Select Mutations to Steal",
+   Options = {"All", "None", "Bloodlit", "Electric", "Frozen", "Rainbow", "Starstruck", "Gold", "Chained"},
+   CurrentOption = {"All"},
+   MultipleOptions = true,
+   Flag = "DropdownMutations",
+   Callback = function(Options)
+        getgenv().StealMutations = Options
+   end,
+})
+
+StealTab:CreateSection("Steal Execution")
 
 StealTab:CreateToggle({
-   Name = "Steal Night (Safe Mode - Skip Bases w/ Owner)",
+   Name = "Steal Night (Safe Mode)",
    CurrentValue = false,
    Flag = "StealNight",
    Callback = function(Value)
