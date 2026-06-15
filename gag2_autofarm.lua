@@ -260,7 +260,8 @@ ToggleBtn.MouseButton1Click:Connect(function()
 end)
 
 -- Rayfield UI Initialization
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+getgenv().SecureMode = true
+local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/siriussoftwarehub/Rayfield/build/source.lua'))()
 
 local Window = Rayfield:CreateWindow({
    Name = "Kyriel Hub | GaG 2",
