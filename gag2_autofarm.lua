@@ -1,4 +1,4 @@
--- GaG 2 Perfected Auto Farm Script v9 (Rayfield UI + Mobile Logo + Filters)
+-- GaG 2 Perfected Auto Farm Script v10 (Custom UI - No Loadstring)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
@@ -9,14 +9,201 @@ getgenv().AutoCollectRainbow = false
 getgenv().AutoCollectGold = false
 getgenv().AutoCollectAll = false
 getgenv().StealNight = false
+getgenv().AutoSell = false
+getgenv().AutoBuyBamboo = false
+getgenv().AutoPlant = false
+getgenv().AutoHarvest = false
+
+getgenv().CropFilter = "All"
+getgenv().MutationFilter = "All"
+getgenv().SafeHomeCFrame = nil
+
 getgenv().WalkSpeedToggle = false
 getgenv().WalkSpeedValue = 16
 getgenv().JumpPowerToggle = false
 getgenv().JumpPowerValue = 50
-getgenv().SafeHomeCFrame = nil
 
-getgenv().StealCrops = {"All"}
-getgenv().StealMutations = {"All"}
+-- Cleanup old GUI
+if CoreGui:FindFirstChild("KyrielGaG2Hub") then
+    CoreGui.KyrielGaG2Hub:Destroy()
+end
+
+-- Custom UI Creation
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "KyrielGaG2Hub"
+ScreenGui.Parent = CoreGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 300, 0, 400)
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -200)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local TopBar = Instance.new("Frame")
+TopBar.Size = UDim2.new(1, 0, 0, 30)
+TopBar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+TopBar.BorderSizePixel = 0
+TopBar.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -40, 1, 0)
+Title.BackgroundTransparency = 1
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Text = " Kyriel Hub | GaG 2"
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 14
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = TopBar
+
+local MinBtn = Instance.new("TextButton")
+MinBtn.Size = UDim2.new(0, 40, 1, 0)
+MinBtn.Position = UDim2.new(1, -40, 0, 0)
+MinBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinBtn.Text = "-"
+MinBtn.Font = Enum.Font.GothamBold
+MinBtn.TextSize = 18
+MinBtn.BorderSizePixel = 0
+MinBtn.Parent = TopBar
+
+local ScrollFrame = Instance.new("ScrollingFrame")
+ScrollFrame.Size = UDim2.new(1, 0, 1, -30)
+ScrollFrame.Position = UDim2.new(0, 0, 0, 30)
+ScrollFrame.BackgroundTransparency = 1
+ScrollFrame.ScrollBarThickness = 4
+ScrollFrame.Parent = MainFrame
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Parent = ScrollFrame
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 5)
+
+local minimized = false
+MinBtn.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    ScrollFrame.Visible = not minimized
+    if minimized then
+        MainFrame.Size = UDim2.new(0, 300, 0, 30)
+        MinBtn.Text = "+"
+        MinBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+    else
+        MainFrame.Size = UDim2.new(0, 300, 0, 400)
+        MinBtn.Text = "-"
+        MinBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    end
+end)
+
+local function CreateToggle(name, default, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -10, 0, 30)
+    btn.Position = UDim2.new(0, 5, 0, 0)
+    btn.BackgroundColor3 = default and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(60, 60, 60)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Text = name .. (default and " [ON]" or " [OFF]")
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 13
+    btn.Parent = ScrollFrame
+    
+    local state = default
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        btn.BackgroundColor3 = state and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(60, 60, 60)
+        btn.Text = name .. (state and " [ON]" or " [OFF]")
+        callback(state)
+    end)
+end
+
+local function CreateInput(name, default, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, -10, 0, 50)
+    frame.Position = UDim2.new(0, 5, 0, 0)
+    frame.BackgroundTransparency = 1
+    frame.Parent = ScrollFrame
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 0, 20)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    label.Text = name
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 12
+    label.Parent = frame
+    
+    local box = Instance.new("TextBox")
+    box.Size = UDim2.new(1, 0, 0, 30)
+    box.Position = UDim2.new(0, 0, 0, 20)
+    box.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    box.TextColor3 = Color3.fromRGB(255, 255, 255)
+    box.Text = default
+    box.Font = Enum.Font.Gotham
+    box.TextSize = 13
+    box.Parent = frame
+    
+    box.FocusLost:Connect(function()
+        callback(box.Text)
+    end)
+end
+
+local function CreateButton(name, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -10, 0, 30)
+    btn.Position = UDim2.new(0, 5, 0, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Text = name
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 13
+    btn.Parent = ScrollFrame
+    btn.MouseButton1Click:Connect(callback)
+end
+
+local function CreateLabel(text)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, 0, 0, 20)
+    lbl.BackgroundTransparency = 1
+    lbl.TextColor3 = Color3.fromRGB(255, 215, 0)
+    lbl.Text = text
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextSize = 13
+    lbl.Parent = ScrollFrame
+end
+
+-- Populating UI
+CreateLabel(" --- AUTO DROPS ---")
+CreateToggle("Auto Rainbow Seed", false, function(v) getgenv().AutoCollectRainbow = v end)
+CreateToggle("Auto Gold Seed", false, function(v) getgenv().AutoCollectGold = v end)
+CreateToggle("Auto All Drops", false, function(v) getgenv().AutoCollectAll = v end)
+
+CreateLabel(" --- AUTO STEAL ---")
+CreateToggle("Steal Night (Safe Mode)", false, function(v) getgenv().StealNight = v end)
+CreateInput("Crop Filter (ex: Bamboo, Corn, All)", "All", function(v) getgenv().CropFilter = v end)
+CreateInput("Mut Filter (ex: Rainbow, Gold, All)", "All", function(v) getgenv().MutationFilter = v end)
+
+CreateLabel(" --- AUTO FARMING ---")
+CreateToggle("Auto Sell (Every 30s)", false, function(v) getgenv().AutoSell = v end)
+CreateToggle("Auto Buy Bamboo Seed", false, function(v) getgenv().AutoBuyBamboo = v end)
+CreateToggle("Auto Plant (Need Home)", false, function(v) getgenv().AutoPlant = v end)
+CreateToggle("Auto Harvest Own (Need Home)", false, function(v) getgenv().AutoHarvest = v end)
+
+CreateLabel(" --- HOME / GARDEN ---")
+CreateButton("Set Safe Return/Garden Home", function()
+    local Char = LocalPlayer.Character
+    if Char and Char:FindFirstChild("HumanoidRootPart") then
+        getgenv().SafeHomeCFrame = Char.HumanoidRootPart.CFrame
+    end
+end)
+
+CreateLabel(" --- PLAYER ---")
+CreateToggle("WalkSpeed Modifier", false, function(v) getgenv().WalkSpeedToggle = v end)
+CreateInput("WalkSpeed Value", "16", function(v) getgenv().WalkSpeedValue = tonumber(v) or 16 end)
+
+-- Update Canvas Size
+task.delay(0.5, function()
+    ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y + 20)
+end)
 
 -- Utility Functions
 local ignoreList = {}
@@ -55,15 +242,6 @@ local function getDropsFolder()
     return Workspace:FindFirstChild("Drops") or Workspace:FindFirstChild("DroppedItems") or Workspace
 end
 
-local function getDropItems()
-    local folder = getDropsFolder()
-    if folder == Workspace then
-        return Workspace:GetChildren()
-    else
-        return folder:GetDescendants()
-    end
-end
-
 local function teleportTo(cframe)
     pcall(function()
         local Char = LocalPlayer.Character
@@ -89,19 +267,90 @@ local function interactWith(part)
     end)
 end
 
--- Master Loop
+-- Core Logic
+local sellTimer = 0
+
 task.spawn(function()
     while task.wait(0.5) do
         local acted = false
         
-        if getgenv().AutoCollectRainbow or getgenv().AutoCollectGold then
-            for _, item in ipairs(getDropItems()) do
+        -- Auto Sell
+        if getgenv().AutoSell then
+            sellTimer = sellTimer + 0.5
+            if sellTimer >= 30 then
+                sellTimer = 0
+                -- Look for sell part
+                for _, part in ipairs(Workspace:GetDescendants()) do
+                    if part:IsA("BasePart") and (string.find(string.lower(part.Name), "sell") or (part:FindFirstChild("TouchInterest") and string.find(string.lower(part.Parent.Name), "sell"))) then
+                        teleportTo(part.CFrame)
+                        task.wait(1)
+                        break
+                    end
+                end
+            end
+        end
+
+        -- Auto Buy Bamboo
+        if not acted and getgenv().AutoBuyBamboo then
+            for _, item in ipairs(Workspace:GetDescendants()) do
+                if string.find(string.lower(item.Name), "bamboo") and string.find(string.lower(item.Name), "seed") then
+                    local prompt = item:FindFirstChildWhichIsA("ProximityPrompt")
+                    if prompt and string.find(string.lower(prompt.ActionText), "buy") then
+                        teleportTo(item:IsA("Model") and item.PrimaryPart.CFrame or item.CFrame)
+                        fireproximityprompt(prompt)
+                        acted = true
+                        break
+                    end
+                end
+            end
+        end
+
+        -- Auto Plant
+        if not acted and getgenv().AutoPlant and getgenv().SafeHomeCFrame then
+            local seed = LocalPlayer.Backpack:FindFirstChild("Bamboo Seed") or LocalPlayer.Character:FindFirstChild("Bamboo Seed")
+            if seed then
+                teleportTo(getgenv().SafeHomeCFrame)
+                if seed.Parent == LocalPlayer.Backpack then
+                    seed.Parent = LocalPlayer.Character
+                end
+                seed:Activate()
+                acted = true
+                task.wait(0.5)
+            end
+        end
+
+        -- Auto Harvest Own Garden
+        if not acted and getgenv().AutoHarvest and getgenv().SafeHomeCFrame then
+            for _, item in ipairs(Workspace:GetDescendants()) do
+                local prompt = item:FindFirstChildWhichIsA("ProximityPrompt")
+                if prompt and prompt.Enabled and string.find(string.lower(prompt.ActionText), "harvest") then
+                    local tPart = getTargetPart(item)
+                    if tPart then
+                        local dist = (tPart.Position - getgenv().SafeHomeCFrame.Position).Magnitude
+                        if dist < 60 then
+                            teleportTo(tPart.CFrame)
+                            fireproximityprompt(prompt)
+                            acted = true
+                            task.wait(0.2)
+                            break
+                        end
+                    end
+                end
+            end
+        end
+
+        -- Drops
+        if not acted and (getgenv().AutoCollectRainbow or getgenv().AutoCollectGold or getgenv().AutoCollectAll) then
+            local folder = getDropsFolder()
+            local items = folder == Workspace and Workspace:GetChildren() or folder:GetDescendants()
+            for _, item in ipairs(items) do
                 if not isIgnored(item) then
                     local itemName = string.lower(item.Name)
                     local isRainbow = getgenv().AutoCollectRainbow and string.find(itemName, "rainbow") and string.find(itemName, "seed")
                     local isGold = getgenv().AutoCollectGold and string.find(itemName, "gold") and string.find(itemName, "seed")
+                    local isDrop = getgenv().AutoCollectAll and isDroppedTool(item)
                     
-                    if isRainbow or isGold then
+                    if isRainbow or isGold or isDrop then
                         local targetPart = getTargetPart(item)
                         if targetPart then
                             teleportTo(targetPart.CFrame)
@@ -115,21 +364,7 @@ task.spawn(function()
             end
         end
         
-        if not acted and getgenv().AutoCollectAll then
-            for _, item in ipairs(getDropItems()) do
-                if not isIgnored(item) and isDroppedTool(item) then
-                    local targetPart = getTargetPart(item)
-                    if targetPart then
-                        teleportTo(targetPart.CFrame)
-                        interactWith(targetPart)
-                        addToIgnore(item, 3)
-                        acted = true
-                        break
-                    end
-                end
-            end
-        end
-        
+        -- Steal Night
         local isNightTime = Lighting.ClockTime < 6 or Lighting.ClockTime > 18
         if not acted and getgenv().StealNight and isNightTime then
             for _, item in ipairs(Workspace:GetDescendants()) do
@@ -144,38 +379,29 @@ task.spawn(function()
                     local actionText = string.lower(prompt.ActionText)
                     if string.find(actionText, "harvest") or string.find(actionText, "steal") then
                         
-                        -- Evaluate Crop & Mutation Filters
                         local parentName = item.Parent and item.Parent.Name or ""
                         local itemName = string.lower(parentName .. " " .. item.Name)
                         
-                        local validCrop = false
-                        if table.find(getgenv().StealCrops, "All") then
-                            validCrop = true
-                        else
-                            for _, crop in ipairs(getgenv().StealCrops) do
-                                if string.find(itemName, string.lower(crop)) then
+                        local cropFilter = string.lower(getgenv().CropFilter)
+                        local mutFilter = string.lower(getgenv().MutationFilter)
+                        
+                        local validCrop = (cropFilter == "all" or cropFilter == "")
+                        if not validCrop then
+                            for word in string.gmatch(cropFilter, '([^,]+)') do
+                                if string.find(itemName, string.match(word, "^%s*(.-)%s*$")) then
                                     validCrop = true
                                     break
                                 end
                             end
                         end
                         
-                        local validMut = false
-                        if table.find(getgenv().StealMutations, "All") then
-                            validMut = true
-                        else
-                            local hasMut = false
-                            for _, mut in ipairs({"bloodlit", "electric", "frozen", "rainbow", "starstruck", "gold", "chained"}) do
-                                if string.find(itemName, mut) then
-                                    hasMut = true
-                                    if table.find(getgenv().StealMutations, mut:gsub("^%l", string.upper)) then
-                                        validMut = true
-                                        break
-                                    end
+                        local validMut = (mutFilter == "all" or mutFilter == "")
+                        if not validMut then
+                            for word in string.gmatch(mutFilter, '([^,]+)') do
+                                if string.find(itemName, string.match(word, "^%s*(.-)%s*$")) then
+                                    validMut = true
+                                    break
                                 end
-                            end
-                            if not hasMut and table.find(getgenv().StealMutations, "None") then
-                                validMut = true
                             end
                         end
                         
@@ -202,8 +428,8 @@ task.spawn(function()
             end
         end
         
-        -- Safe Home Return
-        if not acted and getgenv().SafeHomeCFrame and (getgenv().AutoCollectRainbow or getgenv().AutoCollectGold or getgenv().AutoCollectAll or getgenv().StealNight) then
+        -- Home Return
+        if not acted and getgenv().SafeHomeCFrame and (getgenv().AutoCollectRainbow or getgenv().AutoCollectGold or getgenv().AutoCollectAll or getgenv().StealNight or getgenv().AutoPlant or getgenv().AutoHarvest) then
             local Char = LocalPlayer.Character
             if Char and Char:FindFirstChild("HumanoidRootPart") then
                 local dist = (Char.HumanoidRootPart.Position - getgenv().SafeHomeCFrame.Position).Magnitude
@@ -215,7 +441,7 @@ task.spawn(function()
     end
 end)
 
--- WalkSpeed & JumpPower Loop
+-- WalkSpeed loop
 task.spawn(function()
     while task.wait(0.1) do
         local Char = LocalPlayer.Character
@@ -223,193 +449,6 @@ task.spawn(function()
             if getgenv().WalkSpeedToggle then
                 Char.Humanoid.WalkSpeed = getgenv().WalkSpeedValue
             end
-            if getgenv().JumpPowerToggle then
-                Char.Humanoid.JumpPower = getgenv().JumpPowerValue
-            end
         end
     end
 end)
-
--- Floating Logo Toggle (For Mobile/Small Screens)
-if CoreGui:FindFirstChild("KyrielToggleLogo") then
-    CoreGui.KyrielToggleLogo:Destroy()
-end
-
-local ToggleGui = Instance.new("ScreenGui")
-ToggleGui.Name = "KyrielToggleLogo"
-ToggleGui.Parent = CoreGui
-
-local ToggleBtn = Instance.new("ImageButton")
-ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
-ToggleBtn.Position = UDim2.new(0.5, -25, 0, 10)
-ToggleBtn.Image = "rbxassetid://4483362458" -- Ninja Icon
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-ToggleBtn.UICorner = Instance.new("UICorner", ToggleBtn)
-ToggleBtn.UICorner.CornerRadius = UDim.new(0.5, 0)
-ToggleBtn.Active = true
-ToggleBtn.Draggable = true
-ToggleBtn.Parent = ToggleGui
-
-local isUiVisible = true
-ToggleBtn.MouseButton1Click:Connect(function()
-    isUiVisible = not isUiVisible
-    local rayfieldGui = CoreGui:FindFirstChild("Rayfield")
-    if rayfieldGui then
-        rayfieldGui.Enabled = isUiVisible
-    end
-end)
-
--- Rayfield UI Initialization
-getgenv().SecureMode = true
-local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/siriussoftwarehub/Rayfield/build/source.lua'))()
-
-local Window = Rayfield:CreateWindow({
-   Name = "Kyriel Hub | GaG 2",
-   LoadingTitle = "Loading Kyriel Hub...",
-   LoadingSubtitle = "by Kyriel",
-   ConfigurationSaving = {
-      Enabled = false,
-      FolderName = nil,
-      FileName = "KyrielHub"
-   },
-   Discord = {
-      Enabled = false,
-      Invite = "noinvitelink",
-      RememberJoins = true
-   },
-   KeySystem = false,
-})
-
--- Tabs
-local MainTab = Window:CreateTab("Main", 4483362458)
-local StealTab = Window:CreateTab("Steal", 4483362458)
-local PlayerTab = Window:CreateTab("Player", 4483362458)
-
--- Main Tab
-MainTab:CreateSection("Auto Collect Drops")
-
-MainTab:CreateToggle({
-   Name = "Auto Collect Rainbow Seed",
-   CurrentValue = false,
-   Flag = "AutoRainbow",
-   Callback = function(Value)
-        getgenv().AutoCollectRainbow = Value
-   end,
-})
-
-MainTab:CreateToggle({
-   Name = "Auto Collect Gold Seed",
-   CurrentValue = false,
-   Flag = "AutoGold",
-   Callback = function(Value)
-        getgenv().AutoCollectGold = Value
-   end,
-})
-
-MainTab:CreateToggle({
-   Name = "Auto Collect All Dropped Items",
-   CurrentValue = false,
-   Flag = "AutoAllDrops",
-   Callback = function(Value)
-        getgenv().AutoCollectAll = Value
-   end,
-})
-
--- Steal Tab
-StealTab:CreateSection("Steal Filters")
-
-StealTab:CreateDropdown({
-   Name = "Select Crops to Steal",
-   Options = {"All", "Bamboo", "Blueberry", "Corn", "Mushroom", "Apple", "Carrot", "Pumpkin", "Tomato", "Watermelon"},
-   CurrentOption = {"All"},
-   MultipleOptions = true,
-   Flag = "DropdownCrops",
-   Callback = function(Options)
-        getgenv().StealCrops = Options
-   end,
-})
-
-StealTab:CreateDropdown({
-   Name = "Select Mutations to Steal",
-   Options = {"All", "None", "Bloodlit", "Electric", "Frozen", "Rainbow", "Starstruck", "Gold", "Chained"},
-   CurrentOption = {"All"},
-   MultipleOptions = true,
-   Flag = "DropdownMutations",
-   Callback = function(Options)
-        getgenv().StealMutations = Options
-   end,
-})
-
-StealTab:CreateSection("Steal Execution")
-
-StealTab:CreateToggle({
-   Name = "Steal Night (Safe Mode)",
-   CurrentValue = false,
-   Flag = "StealNight",
-   Callback = function(Value)
-        getgenv().StealNight = Value
-   end,
-})
-
-StealTab:CreateButton({
-   Name = "Set Safe Return Garden (Home)",
-   Callback = function()
-        local Char = LocalPlayer.Character
-        if Char and Char:FindFirstChild("HumanoidRootPart") then
-            getgenv().SafeHomeCFrame = Char.HumanoidRootPart.CFrame
-            Rayfield:Notify({
-               Title = "Home Set",
-               Content = "Character will return here after collecting/stealing.",
-               Duration = 3,
-               Image = 4483362458,
-            })
-        end
-   end,
-})
-
--- Player Tab
-PlayerTab:CreateSection("Local Player Modifications")
-
-PlayerTab:CreateToggle({
-   Name = "Walk Speed Modifier",
-   CurrentValue = false,
-   Flag = "WSToggle",
-   Callback = function(Value)
-        getgenv().WalkSpeedToggle = Value
-   end,
-})
-
-PlayerTab:CreateSlider({
-   Name = "Walk Speed Value",
-   Range = {16, 200},
-   Increment = 1,
-   Suffix = "WS",
-   CurrentValue = 16,
-   Flag = "WSValue",
-   Callback = function(Value)
-        getgenv().WalkSpeedValue = Value
-   end,
-})
-
-PlayerTab:CreateToggle({
-   Name = "Jump Power Modifier",
-   CurrentValue = false,
-   Flag = "JPToggle",
-   Callback = function(Value)
-        getgenv().JumpPowerToggle = Value
-   end,
-})
-
-PlayerTab:CreateSlider({
-   Name = "Jump Power Value",
-   Range = {50, 200},
-   Increment = 1,
-   Suffix = "JP",
-   CurrentValue = 50,
-   Flag = "JPValue",
-   Callback = function(Value)
-        getgenv().JumpPowerValue = Value
-   end,
-})
-
-Rayfield:LoadConfiguration()
