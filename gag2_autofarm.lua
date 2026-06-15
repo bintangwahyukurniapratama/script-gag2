@@ -1,7 +1,8 @@
--- GaG 2 Universal UI Auto Farm Script v5
+-- GaG 2 Universal UI Auto Farm Script v6 (Bug Fixes)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
+local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 
 getgenv().AutoCollectRainbow = false
@@ -9,16 +10,13 @@ getgenv().AutoCollectGold = false
 getgenv().AutoCollectAll = false
 getgenv().StealNight = false
 
--- Save original home position so we can escape
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local SafeHomeCFrame = Character:WaitForChild("HumanoidRootPart").CFrame
 
--- Remove old UI
 if CoreGui:FindFirstChild("KyrielGaG2Hub") then
     CoreGui.KyrielGaG2Hub:Destroy()
 end
 
--- Create Basic UI
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "KyrielGaG2Hub"
 ScreenGui.Parent = CoreGui
@@ -129,16 +127,35 @@ CloseBtn.Text = "Close Menu"
 CloseBtn.Parent = ContentFrame
 
 CloseBtn.MouseButton1Click:Connect(function()
+    getgenv().AutoCollectRainbow = false
+    getgenv().AutoCollectGold = false
+    getgenv().AutoCollectAll = false
+    getgenv().StealNight = false
     ScreenGui:Destroy()
 end)
 
--- Universal Farming Logic
+local function isNightTime()
+    return Lighting.ClockTime < 6 or Lighting.ClockTime > 18
+end
+
+local function isRealItem(part)
+    if part:IsDescendantOf(LocalPlayer.Character) then return false end
+    -- Real interactable items usually have a prompt, touch interest, or click detector
+    if part:FindFirstChildWhichIsA("ProximityPrompt") then return true end
+    if part:FindFirstChildWhichIsA("TouchInterest") then return true end
+    if part:FindFirstChildWhichIsA("ClickDetector") then return true end
+    -- If it's physically unanchored (moving), it might be a drop
+    if part:IsA("BasePart") and not part.Anchored then return true end
+    
+    return false
+end
+
 local function teleportTo(part)
     pcall(function()
         local Char = LocalPlayer.Character
         if Char and Char:FindFirstChild("HumanoidRootPart") and part then
             Char.HumanoidRootPart.CFrame = part.CFrame
-            task.wait(0.15)
+            task.wait(0.2) -- Extra wait to make sure we don't zoom out before interacting
         end
     end)
 end
@@ -148,7 +165,7 @@ local function teleportHome()
         local Char = LocalPlayer.Character
         if Char and Char:FindFirstChild("HumanoidRootPart") then
             Char.HumanoidRootPart.CFrame = SafeHomeCFrame
-            task.wait(0.2)
+            task.wait(0.3)
         end
     end)
 end
@@ -167,27 +184,37 @@ local function interactWith(part)
     end)
 end
 
--- Drops Collector Loop
+-- Collector Loop
 task.spawn(function()
-    while task.wait(0.2) do
-        if getgenv().AutoCollectRainbow or getgenv().AutoCollectGold or getgenv().AutoCollectAll then
+    while task.wait(0.5) do
+        local collectRainbow = getgenv().AutoCollectRainbow
+        local collectGold = getgenv().AutoCollectGold
+        local collectAll = getgenv().AutoCollectAll
+        
+        if collectRainbow or collectGold or collectAll then
             pcall(function()
-                for _, item in ipairs(Workspace:GetDescendants()) do
-                    if item:IsA("BasePart") or item:IsA("Model") then
+                -- Try to find a Drops folder to minimize fake positives
+                local dropsFolder = Workspace:FindFirstChild("Drops") or Workspace:FindFirstChild("DroppedItems") or Workspace
+                
+                for _, item in ipairs(dropsFolder:GetDescendants()) do
+                    -- Double check if toggle turned off mid-loop
+                    if not (getgenv().AutoCollectRainbow or getgenv().AutoCollectGold or getgenv().AutoCollectAll) then break end
+                    
+                    if (item:IsA("BasePart") or item:IsA("Model")) and isRealItem(item) then
                         local itemName = string.lower(item.Name)
                         local isRainbow = string.find(itemName, "rainbow")
                         local isGold = string.find(itemName, "gold")
-                        local isDrop = string.find(itemName, "drop") or string.find(itemName, "seed") or item.Parent.Name == "Drops"
+                        local isDrop = string.find(itemName, "drop") or string.find(itemName, "seed")
                         
                         local targetPart = item:IsA("Model") and item.PrimaryPart or item
                         if targetPart then
-                            if getgenv().AutoCollectAll and isDrop then
+                            if collectAll and isDrop then
                                 teleportTo(targetPart)
                                 interactWith(targetPart)
-                            elseif getgenv().AutoCollectRainbow and isRainbow then
+                            elseif collectRainbow and isRainbow then
                                 teleportTo(targetPart)
                                 interactWith(targetPart)
-                            elseif getgenv().AutoCollectGold and isGold then
+                            elseif collectGold and isGold then
                                 teleportTo(targetPart)
                                 interactWith(targetPart)
                             end
@@ -201,44 +228,37 @@ end)
 
 -- Steal Night Loop
 task.spawn(function()
-    while task.wait(0.5) do
+    while task.wait(1) do
         if getgenv().StealNight then
             pcall(function()
-                local hasStolen = false
-                for _, item in ipairs(Workspace:GetDescendants()) do
-                    if item:IsA("BasePart") or item:IsA("Model") then
-                        local prompt = item:FindFirstChildWhichIsA("ProximityPrompt")
-                        if prompt then
-                            local actionText = string.lower(prompt.ActionText)
-                            if string.find(actionText, "harvest") or string.find(actionText, "steal") or string.find(actionText, "pick") then
-                                local targetPart = item:IsA("Model") and item.PrimaryPart or item
-                                if targetPart then
-                                    teleportTo(targetPart)
-                                    fireproximityprompt(prompt)
-                                    hasStolen = true
-                                    task.wait(0.1)
+                -- ONLY STEAL IF IT'S NIGHT
+                if isNightTime() then
+                    local hasStolen = false
+                    for _, item in ipairs(Workspace:GetDescendants()) do
+                        if not getgenv().StealNight then break end -- Stop if turned off mid-loop
+                        if not isNightTime() then break end -- Stop if it turns day
+                        
+                        if item:IsA("BasePart") or item:IsA("Model") then
+                            local prompt = item:FindFirstChildWhichIsA("ProximityPrompt")
+                            if prompt then
+                                local actionText = string.lower(prompt.ActionText)
+                                if string.find(actionText, "harvest") or string.find(actionText, "steal") or string.find(actionText, "pick") then
+                                    local targetPart = item:IsA("Model") and item.PrimaryPart or item
+                                    if targetPart then
+                                        teleportTo(targetPart)
+                                        fireproximityprompt(prompt)
+                                        hasStolen = true
+                                        task.wait(0.2)
+                                    end
                                 end
                             end
                         end
-                        
-                        -- Fallback for touch-based stealing
-                        local itemName = string.lower(item.Name)
-                        if string.find(itemName, "fruit") or string.find(itemName, "crop") then
-                            local targetPart = item:IsA("Model") and item.PrimaryPart or item
-                            if targetPart and targetPart:FindFirstChild("TouchInterest") then
-                                teleportTo(targetPart)
-                                interactWith(targetPart)
-                                hasStolen = true
-                                task.wait(0.1)
-                            end
-                        end
                     end
-                end
-                
-                -- Escaping logic
-                if hasStolen then
-                    teleportHome()
-                    task.wait(1) -- Wait a bit so we don't look suspicious teleporting back immediately to steal again
+                    
+                    if hasStolen then
+                        teleportHome()
+                        task.wait(1.5)
+                    end
                 end
             end)
         end
